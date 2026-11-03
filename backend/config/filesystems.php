@@ -33,9 +33,19 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false, // jangan pernah sajikan disk privat lewat route otomatis
             'throw' => false,
             'report' => false,
+        ],
+
+        // Dokumen sensitif (KTP, SIM, bukti bayar, foto inspeksi). Hanya diakses lewat
+        // controller dengan signed URL berumur pendek.
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
         ],
 
         'public' => [

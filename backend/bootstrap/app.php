@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\UnauthorizedException as SpatieUnauthorizedException;
@@ -63,6 +64,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthorizationException|AccessDeniedHttpException|SpatieUnauthorizedException $e, Request $request) use ($isApi) {
             if ($isApi($request)) {
                 return response()->json(['message' => __('auth.forbidden')], 403);
+            }
+        });
+
+        $exceptions->render(function (InvalidSignatureException $e, Request $request) use ($isApi) {
+            if ($isApi($request) || $request->is('api/*')) {
+                return response()->json(['message' => 'Tautan tidak valid atau sudah kedaluwarsa. Muat ulang halaman untuk mendapatkan tautan baru.'], 403);
             }
         });
 

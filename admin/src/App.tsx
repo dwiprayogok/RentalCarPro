@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { createBrowserRouter, RouterProvider } from 'react-router'
+import { GuestOnly, RequireAuth, RequirePermission } from '@/auth/guards'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { CarsPage } from '@/features/cars/CarsPage'
+import { CustomersPage } from '@/features/customers/CustomersPage'
+import { P } from '@/lib/permissions'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { LoginPage } from '@/pages/auth/LoginPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { ComingSoonPage } from '@/pages/ComingSoonPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
-function App() {
-  const [count, setCount] = useState(0)
+const router = createBrowserRouter([
+  {
+    element: <GuestOnly />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/lupa-password', element: <ForgotPasswordPage /> },
+    ],
+  },
+  // Dibuka dari tautan email; tetap bisa diakses walau sedang login.
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          {
+            index: true,
+            element: <ComingSoonPage title="Dashboard" subtitle="Ringkasan operasional hari ini." note="Ringkasan sewa aktif, keterlambatan, pembayaran, dan pengingat perawatan dibangun di phase berikutnya." />,
+          },
+          {
+            path: 'transaksi',
+            element: (
+              <RequirePermission anyOf={[P.rentalView]}>
+                <ComingSoonPage title="Transaksi Sewa" subtitle="Kelola booking, serah terima, dan pengembalian." note="Modul transaksi (Sewa Baru, denda, nota) dibangun di Phase 3." />
+              </RequirePermission>
+            ),
+          },
+          { path: 'armada', element: <RequirePermission anyOf={[P.carView]}><CarsPage /></RequirePermission> },
+          { path: 'pelanggan', element: <RequirePermission anyOf={[P.customerView]}><CustomersPage /></RequirePermission> },
+          {
+            path: 'laporan',
+            element: (
+              <RequirePermission anyOf={[P.reportView, P.reportOperational]}>
+                <ComingSoonPage title="Laporan Pembayaran" subtitle="Pembayaran masuk, piutang, dan pendapatan." note="Laporan dan ekspor CSV dibangun setelah modul transaksi." />
+              </RequirePermission>
+            ),
+          },
+          { path: 'panduan', element: <ComingSoonPage title="Panduan Penggunaan" subtitle="Cara memakai RentalPro langkah demi langkah." note="Panduan akan disusun setelah alur transaksi selesai." /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+    ],
+  },
+])
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+export default function App() {
+  return <RouterProvider router={router} />
 }
-
-export default App

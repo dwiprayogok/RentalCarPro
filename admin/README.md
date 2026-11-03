@@ -1,16 +1,36 @@
 # RentalPro: Admin Web
 
-React + TypeScript + Vite. Saat ini masih scaffold dasar (Phase 1).
-UI admin (layout sidebar, login, reset password, halaman data) dibangun di phase berikutnya.
+React 19 + TypeScript + Vite, Tailwind CSS v4, React Router, TanStack Query, React Hook Form + Zod.
 
 ```bash
+cp .env.example .env   # VITE_API_URL=http://localhost:8000
 npm install
-npm run dev     # http://localhost:5173
+npm run dev            # http://localhost:5173
+npm run build          # typecheck + build produksi
+npm run lint
 ```
 
-Admin Web memakai **Sanctum SPA cookie auth**:
-1. `GET  {API}/sanctum/csrf-cookie` (sekali, sebelum login)
-2. `POST {API}/api/v1/auth/login` dengan header `X-XSRF-TOKEN` (axios mengirimnya otomatis dari cookie `XSRF-TOKEN`) dan `withCredentials: true`
-3. `GET  {API}/api/v1/auth/me` untuk role + permission
+## Struktur
 
-Halaman `/reset-password?token=...&email=...` harus tersedia di app ini: tautan email reset kata sandi mengarah ke sini.
+```
+src/
+  auth/           useMe/useLogin/useLogout, useCan(permission), RequireAuth, GuestOnly, RequirePermission
+  components/
+    layout/       AppLayout (sidebar + topbar + breadcrumb), PageHeader
+    ui/           Button, Field/Input/Select/Switch, MoneyInput, Modal, Badge, FilterChips,
+                  Pagination, Empty/Error/Forbidden state, Toast, ConfirmDialog
+  features/
+    cars/         Armada: grid kartu, filter status, modal tambah/edit, detail + galeri foto
+    customers/    Pelanggan: tabel, filter risiko, modal tambah/edit + upload KTP/SIM, riwayat
+  pages/auth/     Login, Lupa password, Reset password (target tautan email)
+  lib/            api (axios + CSRF Sanctum), format (Rupiah/WIB), phone, permissions, types
+  index.css       Design tokens (sidebar #14262D, aksen #0F7B63, latar #F4F7F6)
+```
+
+## Catatan
+
+- Auth: Sanctum SPA cookie. `ensureCsrfCookie()` dipanggil sebelum login, dan respons 419 otomatis diulang sekali dengan cookie CSRF baru.
+- Hak akses: menu, tombol, dan route disembunyikan atau diblokir berdasarkan `permissions` dari `/auth/me`. Server tetap menjadi penentu akhir (Policy).
+- Validasi: Zod di klien meniru aturan server; error 422 dari server dipetakan ke field form lewat `applyServerErrors`.
+- Filter dan halaman disimpan di URL (`?status=servis&page=2`), jadi bisa dibagikan dan tetap ada setelah refresh.
+- Dokumen KTP/SIM ditampilkan memakai signed URL dari API yang berlaku 10 menit.

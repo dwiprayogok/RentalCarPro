@@ -74,6 +74,40 @@ class Customer extends Model
         return $this->hasMany(Rental::class);
     }
 
+    public function initials(): string
+    {
+        $words = preg_split('/\s+/', trim($this->name)) ?: [];
+        $initials = mb_substr($words[0] ?? '', 0, 1).mb_substr($words[1] ?? '', 0, 1);
+
+        return mb_strtoupper($initials !== '' ? $initials : '?');
+    }
+
+    /**
+     * Data yang belum lengkap untuk layanan Lepas Kunci. Kosong = siap.
+     *
+     * @return list<string>
+     */
+    public function selfDriveMissing(): array
+    {
+        $missing = [];
+        if (blank($this->sim_number)) {
+            $missing[] = 'Nomor SIM';
+        }
+        if (! $this->sim_expires_at) {
+            $missing[] = 'Masa berlaku SIM';
+        } elseif ($this->sim_expires_at->isPast()) {
+            $missing[] = 'SIM kedaluwarsa';
+        }
+        if (blank($this->address)) {
+            $missing[] = 'Alamat domisili';
+        }
+        if (blank($this->emergency_contact_name) || blank($this->emergency_contact_phone)) {
+            $missing[] = 'Kontak darurat';
+        }
+
+        return $missing;
+    }
+
     public function isBlacklisted(): bool
     {
         return $this->risk_status === RiskStatus::Blacklist;

@@ -1,68 +1,59 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/*
+ * Design tokens RentalPro (diambil dari prototipe):
+ * sidebar navy kehijauan, aksen hijau teal, latar konten abu kehijauan, kartu putih.
+ * Kontras teks abu dinaikkan dibanding prototipe; ukuran font minimal 12px.
+ */
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  --color-sidebar: #14262d;
+  --color-sidebar-hover: #1c343c;
+  --color-sidebar-active: #1f4a44;
+  --color-sidebar-muted: #9fb4b2;
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+  --color-brand-50: #e9f5f1;
+  --color-brand-100: #cfe9e1;
+  --color-brand-200: #a1d4c4;
+  --color-brand-300: #6dbaa3;
+  --color-brand-400: #3c9c82;
+  --color-brand-500: #0f7b63;
+  --color-brand-600: #0c6853;
+  --color-brand-700: #0a5443;
+  --color-brand-800: #083f33;
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
+  --color-canvas: #f4f7f6;
+  --color-line: #dfe7e4;
+  --color-line-strong: #c9d6d2;
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+  --color-ink: #14262d;
+  --color-ink-soft: #3d5258;
+  --color-ink-muted: #5b6f74;
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  --radius-card: 14px;
+
+  --text-2xs: 0.75rem; /* 12px: ukuran minimum */
+  --text-2xs--line-height: 1rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
   }
-  a:hover {
-    color: #747bff;
+  body {
+    @apply bg-canvas text-ink font-sans text-sm;
   }
-  button {
-    background-color: #f9f9f9;
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-[var(--radius-card)] border border-line bg-white;
+  }
+  .eyebrow {
+    @apply text-2xs font-bold uppercase tracking-[0.14em] text-brand-500;
   }
 }
