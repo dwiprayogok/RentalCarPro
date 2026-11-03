@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 2: auth, role, armada, pelanggan, driver, perawatan |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 2: login, lupa password, Armada, Pelanggan |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 3: + transaksi sewa, ketersediaan, serah terima, pembayaran |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 3: + Transaksi Sewa, Sewa Baru, kalender ketersediaan |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -151,6 +151,17 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
 | GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
 
+| GET | `/api/v1/rentals` | `rental.view` | `view=semua\|booking\|aktif\|terlambat\|selesai\|batal\|belum_lunas`, `search`; `meta.counts` |
+| GET | `/api/v1/rentals/export` | `rental.view` | CSV (`;`, UTF-8 BOM) dengan filter yang sama |
+| POST | `/api/v1/rentals/quote` | `rental.create` | Ringkasan biaya + bentrok + peringatan, tanpa menyimpan |
+| POST | `/api/v1/rentals` | `rental.create` | Sewa Baru: booking, atau `start_now: true` + `handover` (langsung Aktif); `payments[]` awal opsional |
+| GET | `/api/v1/rentals/{id}` | `rental.view` | Detail + tagihan (`billing`), pembayaran, inspeksi |
+| POST | `/api/v1/rentals/{id}/handover` | `rental.handover` | Serah terima booking → Aktif |
+| POST | `/api/v1/rentals/{id}/cancel` | `rental.cancel` | Hanya untuk Booking, alasan wajib |
+| POST/DELETE | `/api/v1/rentals/{id}/payments[/{payment}]` | `payment.create` / `payment.delete` | DP, pelunasan, deposit; bukti bayar privat |
+| POST | `/api/v1/rentals/{id}/inspections/{type}/photos` | `rental.handover` | Foto kondisi (privat, signed URL) |
+| GET | `/api/v1/cars/{id}/availability?from=&to=` | `car.view` | Kalender ketersediaan (WIB) |
+
 Aturan validasi penting:
 - Nomor HP diterima sebagai `08…`, `62…`, atau `+62…` dan disimpan sebagai `+62…`.
 - NIK wajib 16 digit, unik, disimpan terenkripsi, dan API hanya mengirim bentuk ter-mask.
@@ -158,6 +169,14 @@ Aturan validasi penting:
 - Status risiko Perhatian/Blacklist wajib disertai `risk_note`, dan hanya bisa diubah oleh owner/admin (`customer.change_risk`).
 - Plat nomor dinormalisasi kapital, unik, dan harus berformat `F 1576 FGH`. Tarif dengan driver harus ≥ tarif lepas kunci.
 - Mobil, pelanggan, atau driver yang masih punya sewa Booking/Aktif tidak bisa dihapus.
+
+Aturan transaksi (Phase 3):
+- **Durasi:** `hari = max(1, ceil((menit − toleransi) / 1440))`. Dengan toleransi 2 jam: 26 jam = 1 hari, 26 jam 1 menit = 2 hari.
+- **Tarif:** tarif per hari sesuai layanan. Tarif akhir pekan/libur dipakai per hari bila `weekend_rate_enabled` aktif dan mobil punya tarif khusus. Rincian per hari disimpan di `price_breakdown`.
+- **Anti double-booking:** baris mobil dan driver dikunci (`lockForUpdate`) di dalam transaksi sebelum cek bentrok, dengan buffer `booking_buffer_minutes`. Sewa aktif yang terlambat tetap memblokir sampai mobil kembali. Ini diuji dengan beberapa proses PHP paralel (`ConcurrentBookingTest`).
+- **Nomor nota:** `TRX-YYYY-NNNN`, atomik (`INSERT … ON DUPLICATE KEY UPDATE`), reset per tahun WIB, dan ikut di-rollback bila penyimpanan gagal.
+- **Pelanggan:** Blacklist ditolak; pengecualian hanya oleh owner dengan alasan, dan tercatat di activity log. Layanan Lepas Kunci butuh data SIM, alamat, dan kontak darurat yang lengkap.
+- **Pembayaran:** total terbayar dan sisa dihitung di server dari tabel pembayaran. Deposit terpisah dari status Lunas. Sewa yang terlambat menampilkan estimasi denda berjalan dan label "Lunas (belum termasuk denda)".
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -179,7 +198,7 @@ php artisan db:seed --class=RolesAndPermissionsSeeder
 ## Perintah penting
 
 ```bash
-php artisan test                         # test di MySQL (database rentalpro_test)
+php artisan test                         # test di MySQL (database rentalpro_test), termasuk uji race condition
 DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test   # alternatif cepat tanpa MySQL
 php artisan migrate:fresh --seed         # reset database lokal + data demo
 php artisan route:list --path=api        # daftar endpoint
@@ -192,6 +211,8 @@ php artisan route:list --path=api        # daftar endpoint
 |---|---|
 | ![Armada](docs/screenshots/armada.png) | ![Pelanggan](docs/screenshots/pelanggan.png) |
 | ![Detail armada](docs/screenshots/armada-detail.png) | ![Form pelanggan](docs/screenshots/pelanggan-form.png) |
+| ![Transaksi](docs/screenshots/transaksi.png) | ![Sewa Baru](docs/screenshots/sewa-baru.png) |
+| ![Kalender ketersediaan](docs/screenshots/kalender.png) | ![Serah terima](docs/screenshots/serah-terima.png) |
 
 ## Konvensi
 
