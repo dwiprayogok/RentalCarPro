@@ -1,0 +1,167 @@
+# RentalPro
+
+Aplikasi manajemen rental mobil untuk pasar Indonesia.
+
+| Folder | Isi | Status |
+|---|---|---|
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 1: fondasi, auth, role, skema |
+| `admin/` | Admin Web: React + TypeScript + Vite | Scaffold |
+| `landing/` | Landing page publik (Next.js) | Ditunda |
+| `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
+
+API yang sama dipakai Admin Web (cookie Sanctum) dan aplikasi mobile Flutter (token Bearer).
+
+---
+
+## Setup lokal
+
+Prasyarat: PHP 8.3+ (ekstensi `pdo_mysql`, `mbstring`, `openssl`), Composer 2, Node 20+,
+dan MySQL 8 (lewat Docker atau terinstal langsung).
+
+### 1. Jalankan MySQL 8 + Mailpit (Docker)
+
+```bash
+docker compose up -d
+```
+
+Ini membuat database `rentalpro` dan `rentalpro_test` (user `rentalpro` / `secret`).
+Mailpit menampung email yang dikirim saat development: http://localhost:8025.
+
+> Tanpa Docker: buat database `rentalpro` dan `rentalpro_test` di MySQL 8 Anda,
+> lalu sesuaikan `DB_*` di `backend/.env`.
+
+### 2. Backend
+
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve            # http://localhost:8000
+```
+
+Di terminal lain, jalankan worker antrean (email reset kata sandi dikirim lewat antrean):
+
+```bash
+cd backend
+php artisan queue:work
+```
+
+### 3. Admin Web
+
+```bash
+cd admin
+npm install
+npm run dev                  # http://localhost:5173
+```
+
+### Akun demo (hanya dibuat di environment non-produksi)
+
+| Role | Email | Kata sandi |
+|---|---|---|
+| owner | `owner@rentalpro.test` | `password123` |
+| admin | `admin@rentalpro.test` | `password123` |
+| staff | `staff@rentalpro.test` | `password123` |
+
+---
+
+## Setup Gmail SMTP (reset kata sandi)
+
+Gmail tidak mengizinkan login SMTP memakai kata sandi biasa. Anda perlu **App Password**.
+
+1. Buka https://myaccount.google.com/security dengan akun Gmail yang akan dipakai sebagai pengirim.
+2. Aktifkan **Verifikasi 2 Langkah** (2-Step Verification). App Password hanya tersedia jika ini aktif.
+3. Buka https://myaccount.google.com/apppasswords (atau cari "App passwords" di kolom pencarian akun Google).
+4. Isi nama aplikasi, mis. `RentalPro`, lalu klik **Create**.
+5. Salin 16 karakter yang muncul (contoh `abcd efgh ijkl mnop`). Kode ini hanya ditampilkan sekali.
+6. Isi `backend/.env`:
+
+   ```dotenv
+   MAIL_MAILER=smtp
+   MAIL_SCHEME=smtp
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=akunanda@gmail.com
+   MAIL_PASSWORD="abcd efgh ijkl mnop"
+   MAIL_FROM_ADDRESS=akunanda@gmail.com
+   MAIL_FROM_NAME="RentalPro"
+   FRONTEND_URL=http://localhost:5173
+   ```
+
+7. Terapkan dan uji:
+
+   ```bash
+   php artisan config:clear
+   php artisan queue:work
+   ```
+
+   Lalu kirim permintaan lupa kata sandi:
+
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/forgot-password \
+     -H "Accept: application/json" -H "Content-Type: application/json" \
+     -d '{"email":"owner@rentalpro.test"}'
+   ```
+
+   Ganti email owner demo dengan email asli Anda terlebih dahulu agar email benar-benar diterima.
+
+Catatan:
+- `MAIL_FROM_ADDRESS` harus sama dengan `MAIL_USERNAME` (atau alias "Send mail as" yang sudah diverifikasi di Gmail). Jika berbeda, Gmail akan menimpanya.
+- Port 465 juga bisa dipakai: `MAIL_PORT=465` dan `MAIL_SCHEME=smtps`.
+- Batas kirim Gmail pribadi sekitar 500 email/hari. Untuk produksi bervolume besar, pertimbangkan Google Workspace atau layanan email transaksional.
+- Jika App Password dicabut atau kata sandi Google diganti, buat App Password baru.
+- **Jangan pernah** commit `.env`. Hanya `.env.example` yang masuk repo.
+
+Tautan di email mengarah ke `FRONTEND_URL/reset-password?token=...&email=...` (halaman di Admin Web),
+yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
+
+---
+
+## Endpoint Phase 1
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/sanctum/csrf-cookie` | publik | Wajib dipanggil Admin Web sebelum login |
+| POST | `/api/v1/auth/login` | publik, 5×/menit | Login Admin Web (cookie sesi) |
+| POST | `/api/v1/auth/token` | publik, 5×/menit | Login mobile, mengembalikan token Bearer (`device_name` wajib) |
+| POST | `/api/v1/auth/forgot-password` | publik, 3×/menit | Kirim email reset (balasan selalu sama) |
+| POST | `/api/v1/auth/reset-password` | publik, 3×/menit | `token`, `email`, `password`, `password_confirmation` |
+| GET | `/api/v1/auth/me` | login | Profil + `roles` + `permissions` |
+| POST | `/api/v1/auth/logout` | login | Mengakhiri sesi / mencabut token |
+| GET | `/api/v1/settings` | `setting.view` | Semua role |
+| PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}` |
+| GET/POST | `/api/v1/users` | `user.manage` | Owner saja |
+
+Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
+dengan status 401, 403, 404, 419, 422, atau 429.
+
+## Role & permission
+
+Katalog lengkap ada di `backend/app/Support/Permissions.php` (sumber tunggal untuk seeder, Policy, dan frontend).
+
+- **owner**: semua permission, termasuk `setting.update`, `user.manage`, `rental.override_blacklist`, dan `landing.manage`.
+- **admin**: semua permission kecuali empat di atas.
+- **staff**: hanya catat sewa, serah terima, kembali, pembayaran masuk, pelanggan, dan laporan operasional. Tidak punya permission `*.delete`, ubah tarif/denda, refund, diskon, atau laporan keuangan penuh.
+
+Setelah mengubah katalog, sinkronkan dengan:
+
+```bash
+php artisan db:seed --class=RolesAndPermissionsSeeder
+```
+
+## Perintah penting
+
+```bash
+php artisan test                         # test di MySQL (database rentalpro_test)
+DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test   # alternatif cepat tanpa MySQL
+php artisan migrate:fresh --seed         # reset database lokal + data demo
+php artisan route:list --path=api        # daftar endpoint
+./vendor/bin/pint                        # format kode PHP
+```
+
+## Konvensi
+
+- Waktu: disimpan UTC (`app.timezone = UTC`, sesi MySQL `+00:00`), ditampilkan WIB (`APP_DISPLAY_TIMEZONE`). JSON API memakai ISO-8601 dengan offset, mis. `2026-10-21T15:41:00+07:00`.
+- Uang: integer rupiah.
+- Logika bisnis ada di `app/Services` (bukan controller). Validasi ada di FormRequest, akses dicek di Policy.
