@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 1: fondasi, auth, role, skema |
-| `admin/` | Admin Web: React + TypeScript + Vite | Scaffold |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 2: auth, role, armada, pelanggan, driver, perawatan |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 2: login, lupa password, Armada, Pelanggan |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -48,13 +48,23 @@ cd backend
 php artisan queue:work
 ```
 
+Supaya foto armada (disk publik) bisa diakses browser, buat symlink sekali:
+
+```bash
+cd backend
+php artisan storage:link
+```
+
 ### 3. Admin Web
 
 ```bash
 cd admin
+cp .env.example .env         # VITE_API_URL=http://localhost:8000
 npm install
 npm run dev                  # http://localhost:5173
 ```
+
+Buka http://localhost:5173 (pakai `localhost`, bukan `127.0.0.1`, agar cookie sesi cocok dengan `SESSION_DOMAIN`).
 
 ### Akun demo (hanya dibuat di environment non-produksi)
 
@@ -118,7 +128,7 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 
 ---
 
-## Endpoint Phase 1
+## Endpoint
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
@@ -132,6 +142,22 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | GET | `/api/v1/settings` | `setting.view` | Semua role |
 | PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}` |
 | GET/POST | `/api/v1/users` | `user.manage` | Owner saja |
+| GET/POST/PUT/DELETE | `/api/v1/cars` | `car.*` | Filter `search`, `status`, `transmission`, `is_published`, `sort`; `meta.counts` per status. Status `disewa` tidak bisa diset manual |
+| POST/PATCH/DELETE | `/api/v1/cars/{car}/photos[/{photo}]` | `car.update` | Upload `photos[]` (JPG/PNG/WebP ≤ 5 MB, maks. 12), set sampul, hapus |
+| GET/POST/PUT/DELETE | `/api/v1/customers` | `customer.*` | Cari nama/HP/NIK 16 digit/4 digit terakhir; filter `risk_status`; `meta.counts` |
+| GET | `/api/v1/customers/{id}/rentals` | `customer.view` + `rental.view` | Riwayat sewa |
+| POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
+| GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
+| GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
+
+Aturan validasi penting:
+- Nomor HP diterima sebagai `08…`, `62…`, atau `+62…` dan disimpan sebagai `+62…`.
+- NIK wajib 16 digit, unik, disimpan terenkripsi, dan API hanya mengirim bentuk ter-mask.
+- `for_self_drive: true` mewajibkan SIM (nomor + masa berlaku yang belum lewat), alamat, dan kontak darurat.
+- Status risiko Perhatian/Blacklist wajib disertai `risk_note`, dan hanya bisa diubah oleh owner/admin (`customer.change_risk`).
+- Plat nomor dinormalisasi kapital, unik, dan harus berformat `F 1576 FGH`. Tarif dengan driver harus ≥ tarif lepas kunci.
+- Mobil, pelanggan, atau driver yang masih punya sewa Booking/Aktif tidak bisa dihapus.
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -159,6 +185,13 @@ php artisan migrate:fresh --seed         # reset database lokal + data demo
 php artisan route:list --path=api        # daftar endpoint
 ./vendor/bin/pint                        # format kode PHP
 ```
+
+## Tampilan Admin Web
+
+| Armada | Pelanggan |
+|---|---|
+| ![Armada](docs/screenshots/armada.png) | ![Pelanggan](docs/screenshots/pelanggan.png) |
+| ![Detail armada](docs/screenshots/armada-detail.png) | ![Form pelanggan](docs/screenshots/pelanggan-form.png) |
 
 ## Konvensi
 
