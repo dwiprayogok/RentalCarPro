@@ -64,7 +64,13 @@ function toPayload(v: CustomerFormValues): CustomerPayload {
 
 type DocType = 'ktp' | 'sim'
 
-export function CustomerFormModal({ open, customer, onClose }: { open: boolean; customer?: Customer | null; onClose: () => void }) {
+export function CustomerFormModal({ open, customer, onClose, prefill, onSaved }: {
+  open: boolean
+  customer?: Customer | null
+  onClose: () => void
+  prefill?: { name?: string; phone?: string } | null
+  onSaved?: (c: Customer) => void
+}) {
   const isEdit = !!customer
   const can = useCan()
   const toast = useToast()
@@ -83,12 +89,12 @@ export function CustomerFormModal({ open, customer, onClose }: { open: boolean; 
 
   useEffect(() => {
     if (open) {
-      reset(toForm(customer))
+      reset(customer ? toForm(customer) : { ...toForm(null), name: prefill?.name ?? '', phone: prefill?.phone ?? '' })
       setFiles({ ktp: null, sim: null })
       setRemoved({ ktp: false, sim: false })
       setFormError(null)
     }
-  }, [open, customer, reset])
+  }, [open, customer, prefill, reset])
 
   const selfDrive = useWatch({ control, name: 'for_self_drive' })
   const riskStatus = useWatch({ control, name: 'risk_status' })
@@ -126,6 +132,7 @@ export function CustomerFormModal({ open, customer, onClose }: { open: boolean; 
     } else {
       toast(message)
     }
+    onSaved?.(saved)
     onClose()
   })
 

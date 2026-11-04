@@ -21,6 +21,9 @@ export const P = {
   customerChangeRisk: 'customer.change_risk',
   customerViewDocuments: 'customer.view_documents',
   reportView: 'report.view',
+  bookingRequestView: 'booking_request.view',
+  bookingRequestUpdate: 'booking_request.update',
+  bookingRequestConvert: 'booking_request.convert',
   reportOperational: 'report.operational',
 } as const
 

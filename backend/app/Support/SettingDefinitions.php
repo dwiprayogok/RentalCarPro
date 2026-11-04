@@ -41,6 +41,14 @@ final class SettingDefinitions
                 'label' => 'Tandai pelanggan terlambat sebagai "Perhatian"',
                 'description' => 'Pelanggan berstatus Lancar otomatis naik ke Perhatian bila mengembalikan mobil terlambat (melewati toleransi).'],
 
+            // Pengingat dashboard
+            ['group' => 'pengingat', 'key' => 'reminder_days', 'value' => 30, 'type' => 'int',
+                'label' => 'Pengingat jatuh tempo (hari)',
+                'description' => 'Pajak, STNK, dan servis yang jatuh tempo dalam sekian hari tampil di dashboard.'],
+            ['group' => 'pengingat', 'key' => 'reminder_km', 'value' => 1000, 'type' => 'int',
+                'label' => 'Pengingat servis (km)',
+                'description' => 'Servis berdasarkan odometer tampil bila sisa jaraknya di bawah nilai ini.'],
+
             // Deposit
             ['group' => 'deposit', 'key' => 'default_deposit', 'value' => 0, 'type' => 'int',
                 'label' => 'Deposit default (Rp)',

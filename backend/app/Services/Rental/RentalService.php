@@ -2,10 +2,12 @@
 
 namespace App\Services\Rental;
 
+use App\Enums\BookingRequestStatus;
 use App\Enums\CarStatus;
 use App\Enums\InspectionType;
 use App\Enums\RentalStatus;
 use App\Enums\ServiceType;
+use App\Models\BookingRequest;
 use App\Models\Car;
 use App\Models\Customer;
 use App\Models\Driver;
@@ -60,6 +62,20 @@ class RentalService
 
             $this->raceWindowForTests();
 
+            // Konversi dari Permintaan Booking (landing): kunci baris agar tidak dikonversi dua kali.
+            $bookingRequest = isset($data['booking_request_id'])
+                ? BookingRequest::query()->lockForUpdate()->findOrFail($data['booking_request_id'])
+                : null;
+            if ($bookingRequest) {
+                if (! $by->can('convert', $bookingRequest)) {
+                    throw ValidationException::withMessages(['booking_request_id' => 'Anda tidak berwenang mengonversi permintaan booking.']);
+                }
+                if (! in_array($bookingRequest->status, [BookingRequestStatus::Baru, BookingRequestStatus::Dihubungi], true)
+                    || Rental::query()->where('booking_request_id', $bookingRequest->id)->exists()) {
+                    throw ValidationException::withMessages(['booking_request_id' => 'Permintaan booking ini sudah diproses (dikonfirmasi atau ditolak).']);
+                }
+            }
+
             // 2) Validasi bisnis (setelah kunci, agar data yang dibaca terbaru).
             $customer = Customer::query()->findOrFail($data['customer_id']);
             $this->assertCustomerAllowed($customer, $service, $data, $by);
@@ -89,6 +105,7 @@ class RentalService
                 'customer_id' => $customer->id,
                 'car_id' => $car->id,
                 'driver_id' => $driver?->id,
+                'booking_request_id' => $bookingRequest?->id,
                 'service_type' => $service,
                 'status' => $startNow ? RentalStatus::Aktif : RentalStatus::Booking,
                 'start_at' => $start,
@@ -108,6 +125,12 @@ class RentalService
                 'created_by' => $by->id,
                 'updated_by' => $by->id,
             ]);
+
+            if ($bookingRequest) {
+                $bookingRequest->forceFill([
+                    'status' => BookingRequestStatus::Dikonfirmasi, 'handled_by' => $by->id, 'handled_at' => now(),
+                ])->save();
+            }
 
             if ($override) {
                 activity('rental')->performedOn($rental)->causedBy($by)->event('blacklist_override')
