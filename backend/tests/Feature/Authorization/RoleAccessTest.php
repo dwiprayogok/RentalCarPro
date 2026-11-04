@@ -84,7 +84,7 @@ class RoleAccessTest extends TestCase
         $this->actingAs($this->userWithRole('owner'))
             ->putJson('/api/v1/settings', ['settings' => ['late_fee_per_hour' => -5]])
             ->assertStatus(422)
-            ->assertJsonPath('errors', ['settings.late_fee_per_hour' => ['Harus berupa bilangan bulat tidak negatif.']]);
+            ->assertJsonPath('errors', ['settings.late_fee_per_hour' => ['denda keterlambatan per jam (rp) minimal bernilai 0.']]);
 
         $this->actingAs($this->userWithRole('owner'))
             ->putJson('/api/v1/settings', ['settings' => ['tidak_ada' => 1]])

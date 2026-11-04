@@ -6,7 +6,7 @@ import { initialsOf } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { ROLE_LABELS } from '@/lib/permissions'
 import { Logo } from './Logo'
-import { insightNav, workspaceNav, type NavItem } from './nav'
+import { insightNav, systemNav, workspaceNav, type NavItem } from './nav'
 
 function NavSection({ title, items, onNavigate }: { title: string; items: NavItem[]; onNavigate?: () => void }) {
   const can = useCan()
@@ -57,6 +57,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <NavSection title="Workspace" items={workspaceNav} onNavigate={onNavigate} />
         <div className="mx-3 border-t border-white/10" />
         <NavSection title="Insight & Bantuan" items={insightNav} onNavigate={onNavigate} />
+        <NavSection title="Sistem" items={systemNav} onNavigate={onNavigate} />
       </nav>
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">

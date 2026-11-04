@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, HelpCircle, Inbox, LayoutGrid, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, CarFront, FileText, HelpCircle, History, Inbox, LayoutGrid, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
 import { P } from '@/lib/permissions'
 
 export interface NavItem {
@@ -22,6 +22,12 @@ export const insightNav: NavItem[] = [
   { to: '/panduan', label: 'Panduan Penggunaan', icon: HelpCircle, anyOf: [] },
 ]
 
+export const systemNav: NavItem[] = [
+  { to: '/pengaturan', label: 'Pengaturan', icon: Settings, anyOf: [P.settingUpdate] },
+  { to: '/pengguna', label: 'Pengguna & Role', icon: UserCog, anyOf: [P.userManage] },
+  { to: '/log-aktivitas', label: 'Log Aktivitas', icon: History, anyOf: [P.activityView] },
+]
+
 export const pageTitles: Record<string, string> = Object.fromEntries(
-  [...workspaceNav, ...insightNav].map((n) => [n.to, n.label]),
+  [...workspaceNav, ...insightNav, ...systemNav].map((n) => [n.to, n.label]),
 )

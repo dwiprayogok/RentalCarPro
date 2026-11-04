@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Phone;
+use App\Support\SettingDefinitions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -41,20 +44,36 @@ class SettingService
     }
 
     /**
+     * Simpan beberapa pengaturan sekaligus. Validasi memakai SettingDefinitions::rules()
+     * (pesan Bahasa Indonesia dengan label pengaturan), lalu nilai dipaksa ke tipenya.
+     *
      * @param  array<string, mixed>  $values
      */
     public function update(array $values, ?User $by = null): void
     {
+        $known = Setting::query()->pluck('label', 'key');
+        $unknown = array_diff(array_keys($values), $known->keys()->all());
+        if ($unknown !== []) {
+            throw ValidationException::withMessages(['settings' => 'Pengaturan tidak dikenal: '.implode(', ', $unknown)]);
+        }
+
+        if (array_key_exists('business_whatsapp', $values) && filled($values['business_whatsapp'])) {
+            $values['business_whatsapp'] = Phone::normalize((string) $values['business_whatsapp']);
+        }
+
+        $rules = [];
+        $attributes = [];
+        foreach (SettingDefinitions::rules() as $key => $r) {
+            $base = str_contains($key, '.') ? strstr($key, '.', true) : $key;
+            if (array_key_exists($base, $values)) {
+                $rules["settings.{$key}"] = array_merge(str_contains($key, '.') ? [] : ['present'], $r);
+                $attributes["settings.{$key}"] = mb_strtolower($known[$base] ?? $base);
+            }
+        }
+        Validator::make(['settings' => $values], $rules, [], $attributes)->validate();
+
         DB::transaction(function () use ($values, $by) {
             $settings = Setting::query()->whereIn('key', array_keys($values))->get()->keyBy('key');
-
-            $unknown = array_diff(array_keys($values), $settings->keys()->all());
-            if ($unknown !== []) {
-                throw ValidationException::withMessages([
-                    'settings' => 'Pengaturan tidak dikenal: '.implode(', ', $unknown),
-                ]);
-            }
-
             foreach ($values as $key => $value) {
                 $setting = $settings[$key];
                 $setting->value = $this->coerce($setting->type, $value, $key);
@@ -82,10 +101,10 @@ class SettingService
             'bool' => is_bool($value) || in_array($value, [0, 1, '0', '1'], true)
                 ? (bool) $value
                 : throw $error('Harus bernilai ya atau tidak.'),
-            'string' => is_scalar($value) && mb_strlen((string) $value) <= 2000
-                ? (string) $value
-                : throw $error('Harus berupa teks maksimal 2000 karakter.'),
-            default => is_array($value) ? $value : throw $error('Harus berupa daftar.'),
+            'string' => $value === null || is_scalar($value)
+                ? trim((string) $value)
+                : throw $error('Harus berupa teks.'),
+            default => is_array($value) ? array_values(array_map('intval', array_unique($value))) : throw $error('Harus berupa daftar.'),
         };
     }
 }
