@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 5: + dashboard lengkap, laporan + CSV, permintaan booking |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 5: + Dashboard, Laporan, Permintaan Booking, Panduan |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 6: + pengaturan, pengguna & role, log aktivitas, matriks izin |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 6: + Pengaturan, Pengguna & Role, Log Aktivitas |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -139,9 +139,14 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST | `/api/v1/auth/reset-password` | publik, 3×/menit | `token`, `email`, `password`, `password_confirmation` |
 | GET | `/api/v1/auth/me` | login | Profil + `roles` + `permissions` |
 | POST | `/api/v1/auth/logout` | login | Mengakhiri sesi / mencabut token |
-| GET | `/api/v1/settings` | `setting.view` | Semua role |
-| PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}` |
-| GET/POST | `/api/v1/users` | `user.manage` | Owner saja |
+| GET | `/api/v1/settings` | `setting.view` | Semua role (dibutuhkan form) |
+| PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}`; batas nilai per key di `SettingDefinitions::rules()` |
+| GET/POST/DELETE | `/api/v1/holidays` | `setting.view` / `setting.update` | Tanggal libur untuk tarif akhir pekan/libur |
+| GET | `/api/v1/roles` | `user.manage` | Role + daftar permission + jumlah pengguna |
+| GET/POST/PUT | `/api/v1/users` | `user.manage` | Owner saja; tidak bisa mengubah role sendiri, minimal 1 owner aktif |
+| PATCH | `/api/v1/users/{id}/status` | `user.manage` | Aktif/nonaktif; nonaktif mencabut semua sesi & token |
+| POST | `/api/v1/users/{id}/force-password-reset` | `user.manage` | Sandi lama tidak berlaku, sesi dicabut, email reset dikirim |
+| GET | `/api/v1/activity-log` | `activity.view` | Filter `module`, `event`, `causer_id`, `from`, `to`, `search` |
 | GET/POST/PUT/DELETE | `/api/v1/cars` | `car.*` | Filter `search`, `status`, `transmission`, `is_published`, `sort`; `meta.counts` per status. Status `disewa` tidak bisa diset manual |
 | POST/PATCH/DELETE | `/api/v1/cars/{car}/photos[/{photo}]` | `car.update` | Upload `photos[]` (JPG/PNG/WebP ≤ 5 MB, maks. 12), set sampul, hapus |
 | GET/POST/PUT/DELETE | `/api/v1/customers` | `customer.*` | Cari nama/HP/NIK 16 digit/4 digit terakhir; filter `risk_status`; `meta.counts` |
@@ -212,6 +217,8 @@ Katalog lengkap ada di `backend/app/Support/Permissions.php` (sumber tunggal unt
 - **admin**: semua permission kecuali empat di atas.
 - **staff**: hanya catat sewa, serah terima, kembali, pembayaran masuk, pelanggan, dan laporan operasional. Tidak punya permission `*.delete`, ubah tarif/denda, refund, diskon, atau laporan keuangan penuh.
 
+Setiap endpoint dijaga Policy/permission dan diuji oleh `tests/Feature/Authorization/PermissionMatrixTest.php`. Test ini memeriksa seluruh endpoint terhadap owner, admin, staff, dan pengguna tanpa role: yang tidak berhak harus 403, yang berhak tidak boleh 403. Test ini juga gagal kalau ada endpoint baru yang belum masuk matriks.
+
 Setelah mengubah katalog, sinkronkan dengan:
 
 ```bash
@@ -239,6 +246,8 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Kembali](docs/screenshots/kembali.png) |
 | ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
 | ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
+| ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
+| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | |
 
 ## Konvensi
 

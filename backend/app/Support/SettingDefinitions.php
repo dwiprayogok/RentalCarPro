@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Rules\IndonesianPhone;
+
 /**
  * Definisi & nilai default pengaturan sistem. Seeder membuat baris yang belum ada
  * tanpa menimpa nilai yang sudah diubah owner.
@@ -67,6 +69,37 @@ final class SettingDefinitions
                 'label' => 'Syarat singkat di nota', 'description' => 'Satu syarat per baris. Tampil di nota & PDF.'],
             ['group' => 'usaha', 'key' => 'invoice_footer', 'value' => 'Terima kasih. Selamat melanjutkan perjalanan.', 'type' => 'string',
                 'label' => 'Catatan kaki nota', 'description' => ''],
+        ];
+    }
+
+    /**
+     * Aturan validasi per key (dipakai SettingService::update). Batas dibuat longgar namun
+     * mencegah salah ketik yang merusak perhitungan (mis. denda negatif, toleransi 3 hari).
+     *
+     * @return array<string, list<mixed>>
+     */
+    public static function rules(): array
+    {
+        $rupiah = ['integer', 'min:0', 'max:100000000'];
+
+        return [
+            'booking_buffer_minutes' => ['integer', 'between:0,1440'],
+            'grace_period_minutes' => ['integer', 'between:0,720'],
+            'weekend_rate_enabled' => ['boolean'],
+            'weekend_days' => ['array', 'max:7'],
+            'weekend_days.*' => ['integer', 'between:1,7', 'distinct'],
+            'late_fee_per_hour' => $rupiah,
+            'late_fee_cap_days' => ['integer', 'between:1,7'],
+            'auto_flag_late_customer' => ['boolean'],
+            'reminder_days' => ['integer', 'between:1,365'],
+            'reminder_km' => ['integer', 'between:0,20000'],
+            'default_deposit' => $rupiah,
+            'business_name' => ['string', 'min:2', 'max:80'],
+            'business_tagline' => ['nullable', 'string', 'max:120'],
+            'business_address' => ['nullable', 'string', 'max:300'],
+            'business_whatsapp' => ['nullable', 'string', new IndonesianPhone],
+            'invoice_terms' => ['nullable', 'string', 'max:1500'],
+            'invoice_footer' => ['nullable', 'string', 'max:200'],
         ];
     }
 }

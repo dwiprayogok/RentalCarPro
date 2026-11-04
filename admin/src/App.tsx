@@ -8,6 +8,9 @@ import { RentalsPage } from '@/features/rentals/RentalsPage'
 import { BookingRequestsPage } from '@/features/booking-requests/BookingRequestsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { GuidePage } from '@/pages/GuidePage'
+import { ActivityLogPage } from '@/features/admin/ActivityLogPage'
+import { SettingsPage } from '@/features/admin/SettingsPage'
+import { UsersPage } from '@/features/admin/UsersPage'
 import { P } from '@/lib/permissions'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -37,6 +40,9 @@ const router = createBrowserRouter([
           { path: 'permintaan-booking', element: <RequirePermission anyOf={[P.bookingRequestView]}><BookingRequestsPage /></RequirePermission> },
           { path: 'laporan', element: <RequirePermission anyOf={[P.reportView]}><ReportsPage /></RequirePermission> },
           { path: 'panduan', element: <GuidePage /> },
+          { path: 'pengaturan', element: <RequirePermission anyOf={[P.settingUpdate]}><SettingsPage /></RequirePermission> },
+          { path: 'pengguna', element: <RequirePermission anyOf={[P.userManage]}><UsersPage /></RequirePermission> },
+          { path: 'log-aktivitas', element: <RequirePermission anyOf={[P.activityView]}><ActivityLogPage /></RequirePermission> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

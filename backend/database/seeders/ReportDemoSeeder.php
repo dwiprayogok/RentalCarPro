@@ -68,6 +68,10 @@ class ReportDemoSeeder extends Seeder
 
                 $late = [0, 0, 0, 0, 60, 300, 1560][mt_rand(0, 6)]; // menit
                 $returned = $end->copy()->addMinutes($late);
+                // Riwayat "selesai" harus sudah kembali di masa lalu (tidak ada pembayaran di masa depan).
+                if ($returned->gt(now()->subHours(2))) {
+                    break;
+                }
                 $lateFee = $cancelled ? null : $pricing->lateFee($end, $returned, $quote->baseRate);
                 $extra = (! $cancelled && mt_rand(1, 6) === 1) ? 100000 : 0;
                 $total = $quote->rentalAmount + ($lateFee?->total() ?? 0) + $extra;
