@@ -44,27 +44,31 @@ class PublicController extends Controller
             'service' => ['nullable', Rule::enum(ServiceType::class)],
             'start' => ['nullable', 'required_with:end', 'date'],
             'end' => ['nullable', 'required_with:start', 'date', 'after:start'],
-        ]);
+        ], [], ['start' => 'waktu ambil', 'end' => 'waktu kembali', 'seats' => 'jumlah kursi', 'transmission' => 'transmisi', 'service' => 'layanan']);
 
-        $cars = $this->catalog->remember('cars:'.md5(json_encode(array_intersect_key($f, array_flip(['transmission', 'seats', 'sort'])))), fn () => $this->publishedQuery()
-            ->when($f['transmission'] ?? null, fn ($q, $t) => $q->where('transmission', $t))
-            ->when($f['seats'] ?? null, fn ($q, $s) => $q->where('seats', '>=', $s))
-            ->tap(fn ($q) => match ($f['sort'] ?? 'price_asc') {
-                'price_desc' => $q->orderByDesc('rate_self_drive'),
-                'name' => $q->orderBy('brand')->orderBy('model'),
-                default => $q->orderBy('rate_self_drive'),
-            })
-            ->get());
+        // Cache hanya berisi array biasa (bukan model): store cache Laravel menolak unserialize objek.
+        $data = $this->catalog->remember('cars:'.md5(json_encode(array_intersect_key($f, array_flip(['transmission', 'seats', 'sort'])))), fn () => PublicCarResource::collection(
+            $this->publishedQuery()
+                ->when($f['transmission'] ?? null, fn ($q, $t) => $q->where('transmission', $t))
+                ->when($f['seats'] ?? null, fn ($q, $s) => $q->where('seats', '>=', $s))
+                ->tap(fn ($q) => match ($f['sort'] ?? 'price_asc') {
+                    'price_desc' => $q->orderByDesc('rate_self_drive'),
+                    'name' => $q->orderBy('brand')->orderBy('model'),
+                    default => $q->orderBy('rate_self_drive'),
+                })
+                ->get()
+        )->resolve($request));
 
-        $data = PublicCarResource::collection($cars)->resolve($request);
-
-        // Cek ketersediaan untuk rentang tanggal (tidak di-cache lama: jadwal berubah cepat).
+        // Cek ketersediaan untuk rentang tanggal (tidak di-cache: jadwal berubah cepat).
         if (! empty($f['start'])) {
             $start = Carbon::parse($f['start'])->utc();
             $end = Carbon::parse($f['end'])->utc();
             $service = ServiceType::tryFrom($f['service'] ?? '') ?? ServiceType::LepasKunci;
-            foreach ($cars as $i => $car) {
-                $data[$i]['period'] = $this->periodInfo($car, $service, $start, $end);
+            $cars = Car::query()->published()->whereIn('slug', array_column($data, 'slug'))->get()->keyBy('slug');
+            foreach ($data as $i => $row) {
+                if ($car = $cars->get($row['slug'])) {
+                    $data[$i]['period'] = $this->periodInfo($car, $service, $start, $end);
+                }
             }
         }
 
@@ -74,12 +78,17 @@ class PublicController extends Controller
     /** GET /api/public/cars/{slug} — detail + galeri + kalender ketersediaan publik 60 hari. */
     public function car(Request $request, string $slug): JsonResponse
     {
-        $car = $this->catalog->remember("car:{$slug}", fn () => $this->publishedQuery()->where('slug', $slug)->first() ?? false);
-        abort_if(! $car, 404, 'Mobil tidak ditemukan.');
+        $cached = $this->catalog->remember("car:{$slug}", function () use ($slug, $request) {
+            $car = $this->publishedQuery()->where('slug', $slug)->first();
 
-        $calendar = $this->catalog->remember("calendar:{$car->id}:".now()->format('YmdH'), fn () => $this->publicCalendar($car, 60), 300);
+            return $car ? ['id' => $car->id, 'data' => (new PublicCarResource($car))->resolve($request)] : false;
+        });
+        abort_if(! $cached, 404, 'Mobil tidak ditemukan.');
 
-        return response()->json(['data' => (new PublicCarResource($car))->resolve($request) + ['calendar' => $calendar]])
+        // id hanya untuk kunci cache/kalender internal, tidak ikut dikirim.
+        $calendar = $this->catalog->remember("calendar:{$cached['id']}:".now()->format('YmdH'), fn () => $this->publicCalendar(Car::query()->findOrFail($cached['id']), 60), 300);
+
+        return response()->json(['data' => $cached['data'] + ['calendar' => $calendar]])
             ->header('Cache-Control', 'public, max-age=60');
     }
 
@@ -91,7 +100,7 @@ class PublicController extends Controller
             'start' => ['required', 'date'],
             'end' => ['required', 'date', 'after:start'],
             'service' => ['nullable', Rule::enum(ServiceType::class)],
-        ], [], ['car' => 'mobil', 'start' => 'waktu mulai', 'end' => 'waktu selesai']);
+        ], [], ['car' => 'mobil', 'start' => 'waktu ambil', 'end' => 'waktu kembali', 'service' => 'layanan']);
 
         $car = $this->publishedQuery()->where('slug', $f['car'])->first();
         abort_if(! $car, 404, 'Mobil tidak ditemukan.');

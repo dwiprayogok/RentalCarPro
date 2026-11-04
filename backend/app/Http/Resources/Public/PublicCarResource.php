@@ -47,7 +47,7 @@ class PublicCarResource extends JsonResource
             'features' => array_values($this->features ?? []),
             'description' => $this->description,
             'cover_photo_url' => $cover ? Storage::disk($cover->disk)->url($cover->path) : null,
-            'photos' => $photos->map(fn (CarPhoto $p) => ['url' => Storage::disk($p->disk)->url($p->path), 'caption' => $p->caption])->values(),
+            'photos' => $photos->map(fn (CarPhoto $p) => ['url' => Storage::disk($p->disk)->url($p->path), 'caption' => $p->caption])->values()->all(),
             // Status umum saja, tanpa detail sewa.
             'availability' => match ($this->status) {
                 CarStatus::Tersedia => ['status' => 'tersedia', 'label' => 'Tersedia'],

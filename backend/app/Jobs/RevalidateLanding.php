@@ -34,14 +34,19 @@ class RevalidateLanding implements ShouldBeUnique, ShouldQueue
             return; // landing belum dikonfigurasi
         }
 
-        $response = Http::timeout(5)
-            ->withHeaders(['X-Revalidate-Secret' => $secret])
-            ->acceptJson()
-            ->post($url, ['tags' => ['public'], 'reason' => $this->reason]);
-
-        if ($response->failed()) {
-            Log::warning('Revalidate landing gagal', ['status' => $response->status()]);
-            $response->throw();
+        try {
+            Http::timeout(5)
+                ->withHeaders(['X-Revalidate-Secret' => $secret])
+                ->acceptJson()
+                ->post($url, ['tags' => ['public'], 'reason' => $this->reason])
+                ->throw();
+        } catch (\Throwable $e) {
+            Log::warning('Revalidate landing gagal', ['reason' => $this->reason, 'error' => $e->getMessage()]);
+            // Di queue sungguhan: lempar ulang agar dicoba lagi (backoff). Di driver sync jangan
+            // sampai landing yang mati menggagalkan simpan data admin; ISR tetap menyegarkan berkala.
+            if ($this->job && $this->job->getConnectionName() !== 'sync') {
+                throw $e;
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ use App\Models\Rental;
 use App\Services\SettingService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -52,6 +53,24 @@ class PublicApiTest extends TestCase
         $this->assertContains($car['transmission'], ['Matic', 'Manual']);
         $this->assertStringEndsWith('/storage/cars/innova.jpg', $car['cover_photo_url']);
         $this->assertNoSensitiveData($res->getContent());
+    }
+
+    /**
+     * Regresi: store yang men-serialize (database/redis/file) menolak unserialize objek
+     * (cache.serializable_classes = false). Respons publik harus di-cache sebagai array biasa.
+     */
+    public function test_public_cache_works_with_serializing_store(): void
+    {
+        config(['cache.default' => 'database']);
+        $start = urlencode(now()->addDays(2)->toIso8601String());
+        $end = urlencode(now()->addDays(3)->toIso8601String());
+
+        foreach (['/api/public/cars', "/api/public/cars?start={$start}&end={$end}", '/api/public/cars/toyota-innova-2019', '/api/public/site-settings'] as $url) {
+            $first = $this->getJson($url)->assertOk()->getContent();
+            $this->assertSame($first, $this->getJson($url)->assertOk()->getContent(), "Respons dari cache harus sama: {$url}");
+        }
+        $this->getJson("/api/public/cars?start={$start}&end={$end}")->assertJsonPath('data.0.period.available', true);
+        $this->assertGreaterThan(0, DB::table('cache')->where('key', 'like', '%public:v%')->count());
     }
 
     public function test_detail_calendar_and_availability_hide_rental_and_customer_data(): void
@@ -190,6 +209,19 @@ class PublicApiTest extends TestCase
         Http::fake();
         (new RevalidateLanding('x'))->handle();
         Http::assertNothingSent();
+    }
+
+    public function test_landing_down_does_not_break_admin_save_on_sync_queue(): void
+    {
+        config(['queue.default' => 'sync', 'services.landing.revalidate_url' => 'https://landing.test/api/revalidate', 'services.landing.revalidate_secret' => 's3cret']);
+        Http::fake(['landing.test/*' => Http::response('down', 503)]);
+
+        $this->actingAs($this->userWithRole('owner'))
+            ->putJson('/api/v1/settings', ['settings' => ['landing_hero_title' => 'Sewa mobil nyaman di Bogor']])
+            ->assertOk();
+
+        Http::assertSent(fn ($r) => $r->url() === 'https://landing.test/api/revalidate');
+        $this->getJson('/api/public/site-settings')->assertJsonPath('data.hero.title', 'Sewa mobil nyaman di Bogor');
     }
 
     public function test_landing_settings_require_landing_manage(): void

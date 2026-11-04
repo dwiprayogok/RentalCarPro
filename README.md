@@ -4,9 +4,9 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 6: + pengaturan, pengguna & role, log aktivitas, matriks izin |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 6: + Pengaturan, Pengguna & Role, Log Aktivitas |
-| `landing/` | Landing page publik (Next.js) | Ditunda |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1` + Public API `/api/public`, MySQL 8 | Phase 7: + Public API, cache + webhook revalidate |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 7: + Pengaturan Landing, tautan ke landing |
+| `landing/` | Landing page publik: Next.js 15 (App Router, ISR) + Tailwind | Phase 7: beranda, armada, detail mobil, form sewa, SEO |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
 API yang sama dipakai Admin Web (cookie Sanctum) dan aplikasi mobile Flutter (token Bearer).
@@ -65,6 +65,27 @@ npm run dev                  # http://localhost:5173
 ```
 
 Buka http://localhost:5173 (pakai `localhost`, bukan `127.0.0.1`, agar cookie sesi cocok dengan `SESSION_DOMAIN`).
+
+### 4. Landing page (opsional)
+
+```bash
+cd landing
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL, SITE_URL, REVALIDATE_SECRET
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+Agar perubahan di Admin langsung tampil di landing, isi rahasia yang **sama** di kedua sisi, lalu jalankan queue worker:
+
+```bash
+openssl rand -hex 32         # salin hasilnya ke backend/.env (LANDING_REVALIDATE_SECRET) dan landing/.env.local (REVALIDATE_SECRET)
+```
+
+```bash
+cd backend && php artisan queue:work   # mengirim webhook revalidate ke landing
+```
+
+Detail lengkap ada di [`landing/README.md`](landing/README.md).
 
 ### Akun demo (hanya dibuat di environment non-produksi)
 
@@ -206,6 +227,22 @@ Laporan (Phase 5):
 - **Pengujian:** test membandingkan setiap angka dengan perhitungan ulang dari baris mentah memakai data `ReportDemoSeeder` (60 hari, deterministik). Jumlah query diuji tetap sama saat data dilipatgandakan.
 - **Kinerja:** di MySQL dengan ~160 ribu pembayaran, laporan pembayaran memakai range scan index `paid_at` dan selesai dalam ±1 ms.
 
+Public API untuk landing (Phase 7), tanpa login:
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/api/public/cars` | Mobil yang di-publish. Filter `transmission`, `seats`, `sort`. Dengan `start` & `end` (+ `service`) setiap mobil diberi `period` (tersedia, jumlah hari, estimasi total, deposit) |
+| GET | `/api/public/cars/{slug}` | Detail + galeri + kalender 60 hari (hanya rentang tanggal terisi) |
+| GET | `/api/public/availability?car=&start=&end=&service=` | Cek satu mobil + estimasi harga |
+| GET | `/api/public/site-settings` | Identitas usaha, hero, cara sewa, syarat, FAQ, testimoni (hanya setting `is_public`) |
+| POST | `/api/public/booking-requests` | Form permintaan sewa → masuk menu Permintaan Booking (status Baru) |
+
+Aturan Public API (Phase 7):
+- **Daftar putih field:** `PublicCarResource::FIELDS`. Plat nomor, odometer, catatan internal, jatuh tempo pajak/servis, id internal, kode nota, dan data pelanggan tidak pernah keluar (diuji di `tests/Feature/Public/PublicApiTest.php`).
+- **Rate limit:** GET 120/menit per IP (`PUBLIC_API_RATE_LIMIT`). Form sewa: 5 per 10 menit per IP dan 3 per jam per nomor HP. Ada juga honeypot anti-bot. Melewati batas → 429 + `Retry-After`.
+- **Cache:** respons disimpan sebagai array biasa dengan kunci berversi (`public:version`). Setiap perubahan mobil, foto, hari libur, pengaturan publik, atau jadwal sewa menaikkan versi (cache lama otomatis tidak terpakai) lalu menjalankan job `RevalidateLanding`.
+- **Webhook revalidate:** `POST {LANDING_REVALIDATE_URL}` dengan header `X-Revalidate-Secret` dan body `{"tags":["public"]}`. Di queue sungguhan job dicoba ulang 3× (5 dtk, 30 dtk, 2 mnt). Di driver `sync`, kegagalan hanya dicatat di log agar simpan data di Admin tidak ikut gagal. Landing tetap menyegarkan diri tiap `REVALIDATE_SECONDS`.
+
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
 
@@ -247,7 +284,15 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
 | ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
 | ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
-| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | |
+| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | ![Pengaturan Landing](docs/screenshots/pengaturan-landing.png) |
+| ![Booking dari landing](docs/screenshots/booking-dari-landing.png) | |
+
+## Tampilan Landing
+
+| Beranda | Armada (cek tanggal) |
+|---|---|
+| ![Beranda](docs/screenshots/landing-beranda.png) | ![Armada](docs/screenshots/landing-armada.png) |
+| ![Detail mobil & form sewa](docs/screenshots/landing-detail-mobil.png) | ![Mobile](docs/screenshots/landing-mobile.png) |
 
 ## Konvensi
 
