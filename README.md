@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 1: fondasi, auth, role, skema |
-| `admin/` | Admin Web: React + TypeScript + Vite | Scaffold |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 6: + pengaturan, pengguna & role, log aktivitas, matriks izin |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 6: + Pengaturan, Pengguna & Role, Log Aktivitas |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -48,13 +48,23 @@ cd backend
 php artisan queue:work
 ```
 
+Supaya foto armada (disk publik) bisa diakses browser, buat symlink sekali:
+
+```bash
+cd backend
+php artisan storage:link
+```
+
 ### 3. Admin Web
 
 ```bash
 cd admin
+cp .env.example .env         # VITE_API_URL=http://localhost:8000
 npm install
 npm run dev                  # http://localhost:5173
 ```
+
+Buka http://localhost:5173 (pakai `localhost`, bukan `127.0.0.1`, agar cookie sesi cocok dengan `SESSION_DOMAIN`).
 
 ### Akun demo (hanya dibuat di environment non-produksi)
 
@@ -118,7 +128,7 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 
 ---
 
-## Endpoint Phase 1
+## Endpoint
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
@@ -129,9 +139,72 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST | `/api/v1/auth/reset-password` | publik, 3×/menit | `token`, `email`, `password`, `password_confirmation` |
 | GET | `/api/v1/auth/me` | login | Profil + `roles` + `permissions` |
 | POST | `/api/v1/auth/logout` | login | Mengakhiri sesi / mencabut token |
-| GET | `/api/v1/settings` | `setting.view` | Semua role |
-| PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}` |
-| GET/POST | `/api/v1/users` | `user.manage` | Owner saja |
+| GET | `/api/v1/settings` | `setting.view` | Semua role (dibutuhkan form) |
+| PUT | `/api/v1/settings` | `setting.update` | Owner saja. Body: `{"settings": {"late_fee_per_hour": 60000}}`; batas nilai per key di `SettingDefinitions::rules()` |
+| GET/POST/DELETE | `/api/v1/holidays` | `setting.view` / `setting.update` | Tanggal libur untuk tarif akhir pekan/libur |
+| GET | `/api/v1/roles` | `user.manage` | Role + daftar permission + jumlah pengguna |
+| GET/POST/PUT | `/api/v1/users` | `user.manage` | Owner saja; tidak bisa mengubah role sendiri, minimal 1 owner aktif |
+| PATCH | `/api/v1/users/{id}/status` | `user.manage` | Aktif/nonaktif; nonaktif mencabut semua sesi & token |
+| POST | `/api/v1/users/{id}/force-password-reset` | `user.manage` | Sandi lama tidak berlaku, sesi dicabut, email reset dikirim |
+| GET | `/api/v1/activity-log` | `activity.view` | Filter `module`, `event`, `causer_id`, `from`, `to`, `search` |
+| GET/POST/PUT/DELETE | `/api/v1/cars` | `car.*` | Filter `search`, `status`, `transmission`, `is_published`, `sort`; `meta.counts` per status. Status `disewa` tidak bisa diset manual |
+| POST/PATCH/DELETE | `/api/v1/cars/{car}/photos[/{photo}]` | `car.update` | Upload `photos[]` (JPG/PNG/WebP ≤ 5 MB, maks. 12), set sampul, hapus |
+| GET/POST/PUT/DELETE | `/api/v1/customers` | `customer.*` | Cari nama/HP/NIK 16 digit/4 digit terakhir; filter `risk_status`; `meta.counts` |
+| GET | `/api/v1/customers/{id}/rentals` | `customer.view` + `rental.view` | Riwayat sewa |
+| POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
+| GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
+| GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
+
+| GET | `/api/v1/rentals` | `rental.view` | `view=semua\|booking\|aktif\|terlambat\|selesai\|batal\|belum_lunas`, `search`; `meta.counts` |
+| GET | `/api/v1/rentals/export` | `rental.view` | CSV (`;`, UTF-8 BOM) dengan filter yang sama |
+| POST | `/api/v1/rentals/quote` | `rental.create` | Ringkasan biaya + bentrok + peringatan, tanpa menyimpan |
+| POST | `/api/v1/rentals` | `rental.create` | Sewa Baru: booking, atau `start_now: true` + `handover` (langsung Aktif); `payments[]` awal opsional |
+| GET | `/api/v1/rentals/{id}` | `rental.view` | Detail + tagihan (`billing`), pembayaran, inspeksi |
+| POST | `/api/v1/rentals/{id}/handover` | `rental.handover` | Serah terima booking → Aktif |
+| POST | `/api/v1/rentals/{id}/cancel` | `rental.cancel` | Hanya untuk Booking, alasan wajib |
+| POST/DELETE | `/api/v1/rentals/{id}/payments[/{payment}]` | `payment.create` / `payment.delete` | DP, pelunasan, deposit; bukti bayar privat |
+| POST | `/api/v1/rentals/{id}/inspections/{type}/photos` | `rental.handover` | Foto kondisi (privat, signed URL) |
+| GET | `/api/v1/cars/{id}/availability?from=&to=` | `car.view` | Kalender ketersediaan (WIB) |
+
+| POST | `/api/v1/rentals/{id}/return/preview` | `rental.return` | Ringkasan akhir (denda, biaya, deposit, sisa) tanpa menyimpan |
+| POST | `/api/v1/rentals/{id}/return` | `rental.return` | Kembali: inspeksi, biaya tambahan, denda, pembayaran, deposit, mobil, sewa selesai (satu transaksi) |
+| GET | `/api/v1/rentals/{id}/invoice` | `rental.view` | Data nota + `whatsapp_url` + `pdf_share_url` (signed, 7 hari) |
+| GET | `/api/v1/rentals/{id}/invoice/pdf` | `rental.view` | PDF nota (dompdf, A4) |
+| POST | `/api/v1/rentals/{id}/invoice/print-url` | `rental.view` | Signed URL PDF 2 menit untuk tombol Cetak |
+| GET | `/api/v1/dashboard` | `dashboard.view` | Banner dinamis, KPI, arus kas 7 hari, pengembalian prioritas, armada pilihan, transaksi terbaru, pengingat pajak/STNK/servis |
+| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
+| GET | `/api/v1/reports/{type}/export` | `report.view` | CSV (`;`, UTF-8 BOM) |
+| GET/PATCH | `/api/v1/booking-requests[/{id}]` | `booking_request.*` | Status `baru/dihubungi/ditolak`; "Jadikan Sewa" = `POST /rentals` dengan `booking_request_id` |
+
+Aturan validasi penting:
+- Nomor HP diterima sebagai `08…`, `62…`, atau `+62…` dan disimpan sebagai `+62…`.
+- NIK wajib 16 digit, unik, disimpan terenkripsi, dan API hanya mengirim bentuk ter-mask.
+- `for_self_drive: true` mewajibkan SIM (nomor + masa berlaku yang belum lewat), alamat, dan kontak darurat.
+- Status risiko Perhatian/Blacklist wajib disertai `risk_note`, dan hanya bisa diubah oleh owner/admin (`customer.change_risk`).
+- Plat nomor dinormalisasi kapital, unik, dan harus berformat `F 1576 FGH`. Tarif dengan driver harus ≥ tarif lepas kunci.
+- Mobil, pelanggan, atau driver yang masih punya sewa Booking/Aktif tidak bisa dihapus.
+
+Aturan transaksi (Phase 3):
+- **Durasi:** `hari = max(1, ceil((menit − toleransi) / 1440))`. Dengan toleransi 2 jam: 26 jam = 1 hari, 26 jam 1 menit = 2 hari.
+- **Tarif:** tarif per hari sesuai layanan. Tarif akhir pekan/libur dipakai per hari bila `weekend_rate_enabled` aktif dan mobil punya tarif khusus. Rincian per hari disimpan di `price_breakdown`.
+- **Anti double-booking:** baris mobil dan driver dikunci (`lockForUpdate`) di dalam transaksi sebelum cek bentrok, dengan buffer `booking_buffer_minutes`. Sewa aktif yang terlambat tetap memblokir sampai mobil kembali. Ini diuji dengan beberapa proses PHP paralel (`ConcurrentBookingTest`).
+- **Nomor nota:** `TRX-YYYY-NNNN`, atomik (`INSERT … ON DUPLICATE KEY UPDATE`), reset per tahun WIB, dan ikut di-rollback bila penyimpanan gagal.
+- **Pelanggan:** Blacklist ditolak; pengecualian hanya oleh owner dengan alasan, dan tercatat di activity log. Layanan Lepas Kunci butuh data SIM, alamat, dan kontak darurat yang lengkap.
+- **Pembayaran:** total terbayar dan sisa dihitung di server dari tabel pembayaran. Deposit terpisah dari status Lunas. Sewa yang terlambat menampilkan estimasi denda berjalan dan label "Lunas (belum termasuk denda)".
+
+Aturan Kembali (Phase 4):
+- **Denda:** dihitung dari jam kembali rencana. Terlambat ≤ toleransi → Rp 0. Tiap 24 jam penuh = 1 hari sewa tambahan, sisanya per jam berjalan × `late_fee_per_hour`, dibatasi tarif harian × `late_fee_cap_days`.
+- **Total akhir** = sewa − diskon + denda + biaya tambahan. Setiap biaya tambahan wajib disertai alasan.
+- **Deposit:** saran potongan = min(deposit ditahan, sisa tagihan) dan bisa diubah admin. Sisa deposit selalu dikembalikan. Kalau masih ada sisa tagihan, sewa tetap Selesai sebagai piutang.
+- **Mobil:** odometer diperbarui. Status kembali ke `tersedia`, atau `servis` bila ada biaya kerusakan (otomatis membuat catatan perawatan); admin bisa mengubahnya.
+- **Pelanggan:** yang terlambat melewati toleransi otomatis naik dari Lancar ke Perhatian (setting `auto_flag_late_customer`). Semua langkah tercatat di activity log.
+
+Laporan (Phase 5):
+- **Pendapatan diterima** = DP + pelunasan + potong deposit − refund, per tanggal bayar (WIB). Deposit titipan tidak dihitung.
+- **Agregasi di database:** `SUM`/`COUNT`/`GROUP BY` per hari, metode, dan mobil. Utilisasi menghitung irisan waktu sewa dengan periode di SQL. Index khusus laporan ada di migration `add_report_indexes`.
+- **Pengujian:** test membandingkan setiap angka dengan perhitungan ulang dari baris mentah memakai data `ReportDemoSeeder` (60 hari, deterministik). Jumlah query diuji tetap sama saat data dilipatgandakan.
+- **Kinerja:** di MySQL dengan ~160 ribu pembayaran, laporan pembayaran memakai range scan index `paid_at` dan selesai dalam ±1 ms.
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -144,6 +217,8 @@ Katalog lengkap ada di `backend/app/Support/Permissions.php` (sumber tunggal unt
 - **admin**: semua permission kecuali empat di atas.
 - **staff**: hanya catat sewa, serah terima, kembali, pembayaran masuk, pelanggan, dan laporan operasional. Tidak punya permission `*.delete`, ubah tarif/denda, refund, diskon, atau laporan keuangan penuh.
 
+Setiap endpoint dijaga Policy/permission dan diuji oleh `tests/Feature/Authorization/PermissionMatrixTest.php`. Test ini memeriksa seluruh endpoint terhadap owner, admin, staff, dan pengguna tanpa role: yang tidak berhak harus 403, yang berhak tidak boleh 403. Test ini juga gagal kalau ada endpoint baru yang belum masuk matriks.
+
 Setelah mengubah katalog, sinkronkan dengan:
 
 ```bash
@@ -153,12 +228,26 @@ php artisan db:seed --class=RolesAndPermissionsSeeder
 ## Perintah penting
 
 ```bash
-php artisan test                         # test di MySQL (database rentalpro_test)
+php artisan test                         # test di MySQL (database rentalpro_test), termasuk uji race condition
 DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test   # alternatif cepat tanpa MySQL
 php artisan migrate:fresh --seed         # reset database lokal + data demo
 php artisan route:list --path=api        # daftar endpoint
 ./vendor/bin/pint                        # format kode PHP
 ```
+
+## Tampilan Admin Web
+
+| Armada | Pelanggan |
+|---|---|
+| ![Armada](docs/screenshots/armada.png) | ![Pelanggan](docs/screenshots/pelanggan.png) |
+| ![Detail armada](docs/screenshots/armada-detail.png) | ![Form pelanggan](docs/screenshots/pelanggan-form.png) |
+| ![Transaksi](docs/screenshots/transaksi.png) | ![Sewa Baru](docs/screenshots/sewa-baru.png) |
+| ![Kalender ketersediaan](docs/screenshots/kalender.png) | ![Serah terima](docs/screenshots/serah-terima.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Kembali](docs/screenshots/kembali.png) |
+| ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
+| ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
+| ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
+| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | |
 
 ## Konvensi
 
