@@ -37,6 +37,11 @@ class BookingRequest extends Model
         return $this->belongsTo(Car::class)->withTrashed();
     }
 
+    public function handledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handled_by');
+    }
+
     /** Sewa hasil konversi (rentals.booking_request_id). */
     public function rental(): HasOne
     {

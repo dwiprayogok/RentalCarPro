@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\BookingRequestController;
 use App\Http\Controllers\Api\V1\CarAvailabilityController;
 use App\Http\Controllers\Api\V1\CarController;
 use App\Http\Controllers\Api\V1\CarPhotoController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\RentalInspectionController;
 use App\Http\Controllers\Api\V1\RentalInvoiceController;
 use App\Http\Controllers\Api\V1\RentalPaymentController;
 use App\Http\Controllers\Api\V1\RentalReturnController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +83,22 @@ Route::prefix('v1')->name('v1.')->group(function () {
             ->whereIn('type', ['serah_terima', 'kembali'])->name('rentals.inspections.photos.store');
         Route::delete('rentals/{rental}/inspections/{type}/photos/{index}', [RentalInspectionController::class, 'destroyPhoto'])
             ->whereIn('type', ['serah_terima', 'kembali'])->whereNumber('index')->name('rentals.inspections.photos.destroy');
+
+        // Permintaan booking (dari landing page)
+        Route::get('booking-requests', [BookingRequestController::class, 'index'])->name('booking-requests.index');
+        Route::get('booking-requests/{booking_request}', [BookingRequestController::class, 'show'])->name('booking-requests.show');
+        Route::patch('booking-requests/{booking_request}', [BookingRequestController::class, 'update'])->name('booking-requests.update');
+
+        // Laporan (report.view)
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('payments', [ReportController::class, 'payments'])->name('payments');
+            Route::get('receivables', [ReportController::class, 'receivables'])->name('receivables');
+            Route::get('revenue-by-car', [ReportController::class, 'revenueByCar'])->name('revenue-by-car');
+            Route::get('utilization', [ReportController::class, 'utilization'])->name('utilization');
+            Route::get('maintenance', [ReportController::class, 'maintenance'])->name('maintenance');
+            Route::get('{type}/export', [ReportController::class, 'export'])
+                ->whereIn('type', ReportController::TYPES)->name('export');
+        });
 
         // Driver & perawatan
         Route::apiResource('drivers', DriverController::class);

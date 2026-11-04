@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Paginated } from '@/lib/types'
+import type { Car, Paginated } from '@/lib/types'
 import { carKeys } from '@/features/cars/api'
 import type { AvailabilityBlock, ChecklistItem, FeeType, Invoice, Quote, Rental, RentalView, ReturnPreview } from './types'
 
@@ -75,6 +75,7 @@ export interface CreateRentalInput extends QuoteInput {
   discount_reason?: string | null
   blacklist_override_reason?: string | null
   notes?: string | null
+  booking_request_id?: number
   handover?: HandoverInput | null
   payments?: PaymentInput[]
 }
@@ -203,13 +204,36 @@ export async function openInvoicePdf(id: number): Promise<void> {
   }
 }
 
+export interface Reminder {
+  car_id: number
+  car: string
+  plate_number: string
+  type: 'pajak' | 'stnk' | 'servis'
+  label: string
+  due_date: string | null
+  days_left: number | null
+  km_left: number | null
+  overdue: boolean
+}
+
 export interface DashboardData {
-  counts: { aktif: number; terlambat: number; kembali_hari_ini: number; ambil_hari_ini: number; belum_lunas: number; mobil_tersedia: number; mobil_total: number }
+  generated_at: string
+  banner: { tone: 'danger' | 'warning' | 'success'; title: string; message: string; action: { label: string; to: string } | null }
+  kpi: {
+    payments_month: { amount: number; previous: number; change_pct: number | null; month_label: string }
+    active: { count: number; booking: number }
+    cars: { available: number; rented: number; service: number; total: number }
+    need_return: { count: number; overdue: number; today: number }
+  }
   receivable: number
   running_late_total: number
-  overdue: Rental[]
-  returns_today: Rental[]
+  cash_flow: { date: string; amount: number }[]
+  priority_returns: Rental[]
+  featured_cars: (Car & { recent_rentals: number })[]
+  recent_rentals: Rental[]
   pickups_today: Rental[]
+  reminders: Reminder[]
+  new_booking_requests: number
 }
 
 export function useDashboard() {

@@ -56,3 +56,13 @@ export function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
+
+/** Rupiah ringkas untuk sumbu/label grafik: 1.250.000 → "1,25 jt", 950.000 → "950 rb". */
+export function rupiahCompact(value: number): string {
+  const abs = Math.abs(value)
+  const fmt = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n)
+  if (abs >= 1_000_000_000) return `${fmt(value / 1_000_000_000)} M`
+  if (abs >= 1_000_000) return `${fmt(value / 1_000_000)} jt`
+  if (abs >= 1_000) return `${fmt(value / 1_000)} rb`
+  return fmt(value)
+}

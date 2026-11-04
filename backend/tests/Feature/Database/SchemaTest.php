@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Database;
 
+use App\Models\BookingRequest;
 use App\Models\Car;
 use App\Models\Customer;
+use App\Models\Rental;
+use App\Models\RentalPayment;
 use App\Models\User;
 use Database\Seeders\DemoDataSeeder;
 use Database\Seeders\DemoUserSeeder;
@@ -59,10 +62,12 @@ class SchemaTest extends TestCase
     public function test_demo_seeders_are_idempotent(): void
     {
         $this->seed([DemoUserSeeder::class, DemoDataSeeder::class]);
+        $snapshot = fn () => [Car::count(), Customer::count(), User::count(), Rental::count(), RentalPayment::count(), BookingRequest::count()];
+        $first = $snapshot();
+
         $this->seed([DemoUserSeeder::class, DemoDataSeeder::class]);
 
-        $this->assertSame(3, Car::count());
-        $this->assertSame(3, Customer::count());
+        $this->assertSame($first, $snapshot());
         $this->assertSame(3, User::count());
         $this->assertSame('byd-atto-3-2025', Car::where('plate_number', 'F 1576 FGH')->value('slug'));
     }

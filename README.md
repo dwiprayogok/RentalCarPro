@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 4: + Kembali, denda, nota PDF/WhatsApp, dashboard |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 4: + modal Kembali, Nota, Dashboard |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 5: + dashboard lengkap, laporan + CSV, permintaan booking |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 5: + Dashboard, Laporan, Permintaan Booking, Panduan |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -167,7 +167,10 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | GET | `/api/v1/rentals/{id}/invoice` | `rental.view` | Data nota + `whatsapp_url` + `pdf_share_url` (signed, 7 hari) |
 | GET | `/api/v1/rentals/{id}/invoice/pdf` | `rental.view` | PDF nota (dompdf, A4) |
 | POST | `/api/v1/rentals/{id}/invoice/print-url` | `rental.view` | Signed URL PDF 2 menit untuk tombol Cetak |
-| GET | `/api/v1/dashboard` | `dashboard.view` | Ringkasan hari ini: aktif, terlambat + denda berjalan, piutang, kembali/ambil hari ini |
+| GET | `/api/v1/dashboard` | `dashboard.view` | Banner dinamis, KPI, arus kas 7 hari, pengembalian prioritas, armada pilihan, transaksi terbaru, pengingat pajak/STNK/servis |
+| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
+| GET | `/api/v1/reports/{type}/export` | `report.view` | CSV (`;`, UTF-8 BOM) |
+| GET/PATCH | `/api/v1/booking-requests[/{id}]` | `booking_request.*` | Status `baru/dihubungi/ditolak`; "Jadikan Sewa" = `POST /rentals` dengan `booking_request_id` |
 
 Aturan validasi penting:
 - Nomor HP diterima sebagai `08…`, `62…`, atau `+62…` dan disimpan sebagai `+62…`.
@@ -191,6 +194,12 @@ Aturan Kembali (Phase 4):
 - **Deposit:** saran potongan = min(deposit ditahan, sisa tagihan) dan bisa diubah admin. Sisa deposit selalu dikembalikan. Kalau masih ada sisa tagihan, sewa tetap Selesai sebagai piutang.
 - **Mobil:** odometer diperbarui. Status kembali ke `tersedia`, atau `servis` bila ada biaya kerusakan (otomatis membuat catatan perawatan); admin bisa mengubahnya.
 - **Pelanggan:** yang terlambat melewati toleransi otomatis naik dari Lancar ke Perhatian (setting `auto_flag_late_customer`). Semua langkah tercatat di activity log.
+
+Laporan (Phase 5):
+- **Pendapatan diterima** = DP + pelunasan + potong deposit − refund, per tanggal bayar (WIB). Deposit titipan tidak dihitung.
+- **Agregasi di database:** `SUM`/`COUNT`/`GROUP BY` per hari, metode, dan mobil. Utilisasi menghitung irisan waktu sewa dengan periode di SQL. Index khusus laporan ada di migration `add_report_indexes`.
+- **Pengujian:** test membandingkan setiap angka dengan perhitungan ulang dari baris mentah memakai data `ReportDemoSeeder` (60 hari, deterministik). Jumlah query diuji tetap sama saat data dilipatgandakan.
+- **Kinerja:** di MySQL dengan ~160 ribu pembayaran, laporan pembayaran memakai range scan index `paid_at` dan selesai dalam ±1 ms.
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -229,6 +238,7 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Kalender ketersediaan](docs/screenshots/kalender.png) | ![Serah terima](docs/screenshots/serah-terima.png) |
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Kembali](docs/screenshots/kembali.png) |
 | ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
+| ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
 
 ## Konvensi
 

@@ -63,7 +63,17 @@ function SummaryRow({ label, value, strong, muted }: { label: ReactNode; value: 
   )
 }
 
-export function NewRentalModal({ open, onClose, onCreated, initialCar }: { open: boolean; onClose: () => void; onCreated: (r: Rental) => void; initialCar?: Car | null }) {
+export interface RentalPrefill {
+  customer?: Customer | null
+  car?: Car | null
+  service_type?: 'lepas_kunci' | 'dengan_driver'
+  start_at?: string // input WIB "YYYY-MM-DDTHH:mm"
+  planned_end_at?: string
+  notes?: string
+  booking_request_id?: number
+}
+
+export function NewRentalModal({ open, onClose, onCreated, initialCar, prefill }: { open: boolean; onClose: () => void; onCreated: (r: Rental) => void; initialCar?: Car | null; prefill?: RentalPrefill | null }) {
   const can = useCan()
   const toast = useToast()
   const create = useCreateRental()
@@ -88,16 +98,27 @@ export function NewRentalModal({ open, onClose, onCreated, initialCar }: { open:
 
   useEffect(() => {
     if (!open) return
-    reset({ ...defaults(), car_id: initialCar?.id as number })
-    setCustomer(null)
-    setCar(initialCar ?? null)
+    const car0 = prefill?.car ?? initialCar ?? null
+    const base = defaults()
+    reset({
+      ...base,
+      car_id: car0?.id as number,
+      customer_id: prefill?.customer?.id as number,
+      customer_blacklisted: prefill?.customer?.risk_status === 'blacklist',
+      service_type: prefill?.service_type ?? base.service_type,
+      start_at: prefill?.start_at ?? base.start_at,
+      planned_end_at: prefill?.planned_end_at ?? base.planned_end_at,
+      notes: prefill?.notes ?? '',
+    })
+    setCustomer(prefill?.customer ?? null)
+    setCar(car0)
     setDriver(null)
     setSearches({ customer: '', car: '', driver: '' })
-    setHandover(emptyHandover(initialCar?.odometer ?? null))
+    setHandover(emptyHandover(car0?.odometer ?? null))
     setHandoverErrors({})
     setFormError(null)
     setShowCalendar(false)
-  }, [open, initialCar, reset])
+  }, [open, initialCar, prefill, reset])
 
   const w = useWatch({ control })
   const startNow = !!w.start_now
@@ -159,6 +180,7 @@ export function NewRentalModal({ open, onClose, onCreated, initialCar }: { open:
       discount_reason: v.discount_reason || null,
       blacklist_override_reason: v.customer_blacklisted ? v.blacklist_override_reason : null,
       notes: v.notes || null,
+      booking_request_id: prefill?.booking_request_id,
       handover: v.start_now ? {
         odometer: handover.odometer!,
         fuel_level: handover.fuel_level,
@@ -190,7 +212,7 @@ export function NewRentalModal({ open, onClose, onCreated, initialCar }: { open:
       for (const [k, m] of Object.entries(fe)) if (k.startsWith('handover.')) ho[k.slice(9)] = m
       setHandoverErrors(ho)
       const orphan = applyServerErrors(error, setError, FIELDS)
-      const paymentErr = Object.entries(fe).find(([k]) => k.startsWith('payments'))?.[1]
+      const paymentErr = Object.entries(fe).find(([k]) => k.startsWith('payments') || k === 'booking_request_id')?.[1]
       if (errorStatus(error) !== 422 || (orphan && !Object.keys(ho).length)) setFormError(paymentErr ?? orphan ?? errorMessage(error))
     }
   })
@@ -205,7 +227,7 @@ export function NewRentalModal({ open, onClose, onCreated, initialCar }: { open:
       dismissible={!busy}
       size="xl"
       title="Sewa Baru"
-      description="Ringkasan biaya dihitung otomatis oleh server berdasarkan tarif, durasi, dan toleransi."
+      description={prefill?.booking_request_id ? 'Dari permintaan booking landing page. Periksa data lalu simpan.' : 'Ringkasan biaya dihitung otomatis oleh server berdasarkan tarif, durasi, dan toleransi.'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>Batal</Button>

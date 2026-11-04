@@ -73,13 +73,15 @@ class DemoDataSeeder extends Seeder
                 'daily_fee' => 150000, 'is_active' => true],
         );
 
+        // Riwayat 60 hari (laporan & dashboard), lalu dua transaksi yang sedang berjalan.
+        $this->call(ReportDemoSeeder::class);
         $this->seedRentals($driver);
     }
 
     private function seedRentals(Driver $driver): void
     {
         $owner = User::query()->where('email', 'owner@rentalpro.test')->first();
-        if (! $owner || Rental::query()->exists()) {
+        if (! $owner || Rental::query()->whereIn('status', ['aktif', 'booking'])->exists()) {
             return; // idempoten: hanya sekali
         }
 

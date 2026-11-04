@@ -34,6 +34,7 @@ class StoreRentalRequest extends FormRequest
             'discount_reason' => ['nullable', 'string', 'max:255'],
             'blacklist_override_reason' => ['nullable', 'string', 'min:10', 'max:500'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'booking_request_id' => ['nullable', 'integer', Rule::exists('booking_requests', 'id')->whereNull('deleted_at')],
 
             'handover' => ['required_if:start_now,true', 'nullable', 'array'],
             'handover.odometer' => ['required_with:handover', 'integer', 'min:0', 'max:5000000'],

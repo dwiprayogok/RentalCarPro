@@ -119,14 +119,18 @@ class InvoiceAndDashboardTest extends TestCase
 
         $this->actingAs($this->userWithRole('staff'))->getJson('/api/v1/dashboard')
             ->assertOk()
-            ->assertJsonPath('data.counts.aktif', 1)
-            ->assertJsonPath('data.counts.terlambat', 1)
-            ->assertJsonPath('data.counts.ambil_hari_ini', 1)
-            ->assertJsonPath('data.counts.belum_lunas', 1)
+            ->assertJsonPath('data.banner.tone', 'danger')
+            ->assertJsonPath('data.kpi.active.count', 1)
+            ->assertJsonPath('data.kpi.active.booking', 1)
+            ->assertJsonPath('data.kpi.need_return.overdue', 1)
             ->assertJsonPath('data.receivable', 550000)
             ->assertJsonPath('data.running_late_total', 150000)
-            ->assertJsonPath('data.overdue.0.code', $rental->code)
-            ->assertJsonPath('data.overdue.0.billing.running_late_fee', 150000);
+            ->assertJsonPath('data.kpi.payments_month.amount', 550000)
+            ->assertJsonPath('data.cash_flow.6.date', '2026-10-22')
+            ->assertJsonPath('data.cash_flow.5.amount', 550000)
+            ->assertJsonPath('data.priority_returns.0.code', $rental->code)
+            ->assertJsonPath('data.priority_returns.0.billing.running_late_fee', 150000)
+            ->assertJsonCount(1, 'data.pickups_today');
 
         $this->actingAs(User::factory()->create())->getJson('/api/v1/dashboard')->assertForbidden();
     }
