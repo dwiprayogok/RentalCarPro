@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn'
 import { dateOnly, daysUntil, number, rupiah } from '@/lib/format'
 import type { Car } from '@/lib/types'
 import { useCar, useDeleteCar, useDeleteCarPhoto, useSetCoverPhoto, useUploadCarPhotos } from './api'
+import { AvailabilityCalendar } from './AvailabilityCalendar'
 import { CarIllustration } from './CarIllustration'
 
 function Info({ label, children }: { label: string; children: ReactNode }) {
@@ -178,6 +179,10 @@ export function CarDetailModal({ carId, onClose, onEdit }: { carId: number | nul
               )}
               {car.notes && <div className="col-span-2"><Info label="Catatan internal"><span className="whitespace-pre-line">{car.notes}</span></Info></div>}
             </dl>
+            <section className="border-t border-line pt-5 md:col-span-2">
+              <h3 className="mb-3 text-xs font-bold tracking-wide text-ink uppercase">Kalender ketersediaan</h3>
+              <AvailabilityCalendar carId={car.id} />
+            </section>
           </div>
         )}
       </Modal>

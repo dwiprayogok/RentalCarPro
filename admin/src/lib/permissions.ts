@@ -2,6 +2,13 @@
 export const P = {
   dashboardView: 'dashboard.view',
   rentalView: 'rental.view',
+  rentalCreate: 'rental.create',
+  rentalHandover: 'rental.handover',
+  rentalCancel: 'rental.cancel',
+  rentalDiscount: 'rental.discount',
+  rentalOverrideBlacklist: 'rental.override_blacklist',
+  paymentCreate: 'payment.create',
+  paymentDelete: 'payment.delete',
   carView: 'car.view',
   carCreate: 'car.create',
   carUpdate: 'car.update',

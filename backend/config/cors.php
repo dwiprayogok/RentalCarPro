@@ -25,7 +25,7 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['Content-Disposition'], // agar nama file unduhan CSV terbaca frontend
 
     'max_age' => 0,
 

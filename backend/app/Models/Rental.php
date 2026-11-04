@@ -23,7 +23,7 @@ class Rental extends Model
     protected $fillable = [
         'code', 'customer_id', 'car_id', 'driver_id', 'booking_request_id',
         'service_type', 'status', 'start_at', 'planned_end_at', 'picked_up_at', 'returned_at',
-        'daily_rate', 'billed_days', 'rental_amount', 'late_fee', 'late_extra_days', 'extra_fees_total',
+        'daily_rate', 'billed_days', 'rental_amount', 'price_breakdown', 'late_fee', 'late_extra_days', 'extra_fees_total',
         'discount', 'discount_reason', 'total_amount', 'paid_amount', 'deposit_required', 'deposit_held',
         'blacklist_override_by', 'blacklist_override_reason',
         'notes', 'cancel_reason', 'cancelled_at', 'created_by', 'updated_by',
@@ -42,6 +42,7 @@ class Rental extends Model
             'daily_rate' => 'integer',
             'billed_days' => 'integer',
             'rental_amount' => 'integer',
+            'price_breakdown' => 'array',
             'late_fee' => 'integer',
             'late_extra_days' => 'integer',
             'extra_fees_total' => 'integer',
@@ -108,6 +109,11 @@ class Rental extends Model
     public function returnInspection(): HasOne
     {
         return $this->hasOne(RentalInspection::class)->where('type', 'kembali');
+    }
+
+    public function blacklistOverrideBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'blacklist_override_by');
     }
 
     public function createdBy(): BelongsTo

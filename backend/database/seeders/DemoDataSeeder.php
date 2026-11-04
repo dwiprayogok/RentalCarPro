@@ -7,11 +7,14 @@ use App\Enums\RiskStatus;
 use App\Models\Car;
 use App\Models\Customer;
 use App\Models\Driver;
+use App\Models\Rental;
+use App\Models\User;
+use App\Services\Rental\RentalService;
 use Illuminate\Database\Seeder;
 
 /**
  * Data FIKTIF yang mirip prototipe (armada, pelanggan, driver).
- * Transaksi sewa contoh akan ditambahkan di phase transaksi.
+ * Transaksi contoh dibuat lewat RentalService agar melewati aturan yang sama dengan aplikasi.
  */
 class DemoDataSeeder extends Seeder
 {
@@ -64,10 +67,43 @@ class DemoDataSeeder extends Seeder
             $existing ? $existing->update($data) : Customer::create($data);
         }
 
-        Driver::query()->updateOrCreate(
+        $driver = Driver::query()->updateOrCreate(
             ['phone' => '+6281299990001'],
             ['name' => 'Budi Santoso', 'license_number' => 'B1-778899', 'license_expires_at' => now()->addYears(2)->toDateString(),
                 'daily_fee' => 150000, 'is_active' => true],
         );
+
+        $this->seedRentals($driver);
+    }
+
+    private function seedRentals(Driver $driver): void
+    {
+        $owner = User::query()->where('email', 'owner@rentalpro.test')->first();
+        if (! $owner || Rental::query()->exists()) {
+            return; // idempoten: hanya sekali
+        }
+
+        $service = app(RentalService::class);
+        $byd = Car::query()->where('plate_number', 'F 1576 FGH')->firstOrFail();
+        $innova = Car::query()->where('plate_number', 'F 1234 RTY')->firstOrFail();
+        $dwi = Customer::query()->where('nik_hash', Customer::hashNik('3201010101900009'))->firstOrFail();
+        $yuni = Customer::query()->where('nik_hash', Customer::hashNik('3201010101920001'))->firstOrFail();
+
+        // 1) Aktif sejak kemarin, lunas via transfer (mirip nota di prototipe).
+        $active = $service->create([
+            'customer_id' => $dwi->id, 'car_id' => $byd->id, 'service_type' => 'lepas_kunci', 'start_now' => true,
+            'planned_end_at' => now()->addHours(2)->toIso8601String(),
+            'handover' => ['odometer' => $byd->odometer, 'fuel_level' => 100, 'checklist' => [['item' => 'Body & cat', 'ok' => true]], 'notes' => 'Data contoh'],
+            'payments' => [['type' => 'pelunasan', 'method' => 'transfer', 'amount' => 550000, 'reference_number' => 'BCA-DEMO-001']],
+        ], $owner);
+        $active->forceFill(['start_at' => now()->subHours(22), 'picked_up_at' => now()->subHours(22)])->saveQuietly();
+
+        // 2) Booking besok dengan driver, DP Rp 300.000.
+        $service->create([
+            'customer_id' => $yuni->id, 'car_id' => $innova->id, 'service_type' => 'dengan_driver', 'driver_id' => $driver->id,
+            'start_at' => now()->addDay()->setTime(1, 0)->toIso8601String(),   // 08.00 WIB
+            'planned_end_at' => now()->addDays(3)->setTime(1, 0)->toIso8601String(),
+            'payments' => [['type' => 'dp', 'method' => 'tunai', 'amount' => 300000]],
+        ], $owner);
     }
 }

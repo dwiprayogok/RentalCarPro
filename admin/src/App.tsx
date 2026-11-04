@@ -3,6 +3,7 @@ import { GuestOnly, RequireAuth, RequirePermission } from '@/auth/guards'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { CarsPage } from '@/features/cars/CarsPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
+import { RentalsPage } from '@/features/rentals/RentalsPage'
 import { P } from '@/lib/permissions'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -30,14 +31,7 @@ const router = createBrowserRouter([
             index: true,
             element: <ComingSoonPage title="Dashboard" subtitle="Ringkasan operasional hari ini." note="Ringkasan sewa aktif, keterlambatan, pembayaran, dan pengingat perawatan dibangun di phase berikutnya." />,
           },
-          {
-            path: 'transaksi',
-            element: (
-              <RequirePermission anyOf={[P.rentalView]}>
-                <ComingSoonPage title="Transaksi Sewa" subtitle="Kelola booking, serah terima, dan pengembalian." note="Modul transaksi (Sewa Baru, denda, nota) dibangun di Phase 3." />
-              </RequirePermission>
-            ),
-          },
+          { path: 'transaksi', element: <RequirePermission anyOf={[P.rentalView]}><RentalsPage /></RequirePermission> },
           { path: 'armada', element: <RequirePermission anyOf={[P.carView]}><CarsPage /></RequirePermission> },
           { path: 'pelanggan', element: <RequirePermission anyOf={[P.customerView]}><CustomersPage /></RequirePermission> },
           {
