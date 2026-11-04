@@ -55,6 +55,8 @@ final class SettingDefinitions
                 'label' => 'Alamat usaha', 'description' => '', 'is_public' => true],
             ['group' => 'usaha', 'key' => 'business_whatsapp', 'value' => '', 'type' => 'string',
                 'label' => 'Nomor WhatsApp usaha', 'description' => 'Format +62.', 'is_public' => true],
+            ['group' => 'usaha', 'key' => 'invoice_terms', 'value' => "Kendaraan wajib dikembalikan sesuai jadwal; keterlambatan dikenakan denda per jam sesuai ketentuan.\nKerusakan, kehilangan, dan pelanggaran lalu lintas selama masa sewa menjadi tanggung jawab penyewa.\nDeposit dikembalikan setelah kendaraan diperiksa, dikurangi tagihan yang belum dibayar.", 'type' => 'string',
+                'label' => 'Syarat singkat di nota', 'description' => 'Satu syarat per baris. Tampil di nota & PDF.'],
             ['group' => 'usaha', 'key' => 'invoice_footer', 'value' => 'Terima kasih. Selamat melanjutkan perjalanan.', 'type' => 'string',
                 'label' => 'Catatan kaki nota', 'description' => ''],
         ];

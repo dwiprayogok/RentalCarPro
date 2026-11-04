@@ -8,7 +8,9 @@ class InspectionPhotosRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('handover', $this->route('rental'));
+        $ability = $this->route('type') === 'kembali' ? 'return' : 'handover';
+
+        return $this->user()->can($ability, $this->route('rental'));
     }
 
     public function rules(): array

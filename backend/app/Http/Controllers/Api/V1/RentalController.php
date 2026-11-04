@@ -132,6 +132,6 @@ class RentalController extends Controller
 
     private function loadDetail(Rental $rental): Rental
     {
-        return $rental->load(['customer', 'car', 'driver', 'payments.receivedBy', 'inspections', 'createdBy', 'blacklistOverrideBy']);
+        return $rental->load(['customer', 'car', 'driver', 'payments.receivedBy', 'inspections', 'fees', 'createdBy', 'blacklistOverrideBy']);
     }
 }

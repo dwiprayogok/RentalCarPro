@@ -23,7 +23,7 @@ class PaymentService
     public const DISK = 'private';
 
     /**
-     * @param  array{type: string, method: string, amount: int, paid_at?: ?string, reference_number?: ?string, notes?: ?string}  $data
+     * @param  array{type: string, method: ?string, amount: int, paid_at?: ?string, reference_number?: ?string, notes?: ?string}  $data
      */
     public function record(Rental $rental, array $data, User $by, ?UploadedFile $proof = null): RentalPayment
     {

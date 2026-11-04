@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 3: + transaksi sewa, ketersediaan, serah terima, pembayaran |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 3: + Transaksi Sewa, Sewa Baru, kalender ketersediaan |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 4: + Kembali, denda, nota PDF/WhatsApp, dashboard |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 4: + modal Kembali, Nota, Dashboard |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -162,6 +162,13 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST | `/api/v1/rentals/{id}/inspections/{type}/photos` | `rental.handover` | Foto kondisi (privat, signed URL) |
 | GET | `/api/v1/cars/{id}/availability?from=&to=` | `car.view` | Kalender ketersediaan (WIB) |
 
+| POST | `/api/v1/rentals/{id}/return/preview` | `rental.return` | Ringkasan akhir (denda, biaya, deposit, sisa) tanpa menyimpan |
+| POST | `/api/v1/rentals/{id}/return` | `rental.return` | Kembali: inspeksi, biaya tambahan, denda, pembayaran, deposit, mobil, sewa selesai (satu transaksi) |
+| GET | `/api/v1/rentals/{id}/invoice` | `rental.view` | Data nota + `whatsapp_url` + `pdf_share_url` (signed, 7 hari) |
+| GET | `/api/v1/rentals/{id}/invoice/pdf` | `rental.view` | PDF nota (dompdf, A4) |
+| POST | `/api/v1/rentals/{id}/invoice/print-url` | `rental.view` | Signed URL PDF 2 menit untuk tombol Cetak |
+| GET | `/api/v1/dashboard` | `dashboard.view` | Ringkasan hari ini: aktif, terlambat + denda berjalan, piutang, kembali/ambil hari ini |
+
 Aturan validasi penting:
 - Nomor HP diterima sebagai `08…`, `62…`, atau `+62…` dan disimpan sebagai `+62…`.
 - NIK wajib 16 digit, unik, disimpan terenkripsi, dan API hanya mengirim bentuk ter-mask.
@@ -177,6 +184,13 @@ Aturan transaksi (Phase 3):
 - **Nomor nota:** `TRX-YYYY-NNNN`, atomik (`INSERT … ON DUPLICATE KEY UPDATE`), reset per tahun WIB, dan ikut di-rollback bila penyimpanan gagal.
 - **Pelanggan:** Blacklist ditolak; pengecualian hanya oleh owner dengan alasan, dan tercatat di activity log. Layanan Lepas Kunci butuh data SIM, alamat, dan kontak darurat yang lengkap.
 - **Pembayaran:** total terbayar dan sisa dihitung di server dari tabel pembayaran. Deposit terpisah dari status Lunas. Sewa yang terlambat menampilkan estimasi denda berjalan dan label "Lunas (belum termasuk denda)".
+
+Aturan Kembali (Phase 4):
+- **Denda:** dihitung dari jam kembali rencana. Terlambat ≤ toleransi → Rp 0. Tiap 24 jam penuh = 1 hari sewa tambahan, sisanya per jam berjalan × `late_fee_per_hour`, dibatasi tarif harian × `late_fee_cap_days`.
+- **Total akhir** = sewa − diskon + denda + biaya tambahan. Setiap biaya tambahan wajib disertai alasan.
+- **Deposit:** saran potongan = min(deposit ditahan, sisa tagihan) dan bisa diubah admin. Sisa deposit selalu dikembalikan. Kalau masih ada sisa tagihan, sewa tetap Selesai sebagai piutang.
+- **Mobil:** odometer diperbarui. Status kembali ke `tersedia`, atau `servis` bila ada biaya kerusakan (otomatis membuat catatan perawatan); admin bisa mengubahnya.
+- **Pelanggan:** yang terlambat melewati toleransi otomatis naik dari Lancar ke Perhatian (setting `auto_flag_late_customer`). Semua langkah tercatat di activity log.
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -213,6 +227,8 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Detail armada](docs/screenshots/armada-detail.png) | ![Form pelanggan](docs/screenshots/pelanggan-form.png) |
 | ![Transaksi](docs/screenshots/transaksi.png) | ![Sewa Baru](docs/screenshots/sewa-baru.png) |
 | ![Kalender ketersediaan](docs/screenshots/kalender.png) | ![Serah terima](docs/screenshots/serah-terima.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Kembali](docs/screenshots/kembali.png) |
+| ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
 
 ## Konvensi
 

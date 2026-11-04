@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Camera, KeyRound, MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Ban, Camera, KeyRound, MessageCircle, Plus, Receipt, Trash2, Undo2 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge, RiskBadge } from '@/components/ui/Badge'
@@ -15,7 +15,9 @@ import { uploadInspectionPhotos, useCancelRental, useDeletePayment, useHandover,
 import { PaymentBadge, RentalStatusBadge } from './badges'
 import { emptyHandover, FUEL_LEVELS, type HandoverValue } from './handover'
 import { HandoverFields } from './HandoverFields'
+import { InvoiceModal } from './InvoiceModal'
 import { PaymentForm } from './PaymentForm'
+import { ReturnModal } from './ReturnModal'
 import type { Inspection, Rental } from './types'
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
@@ -63,7 +65,7 @@ function InspectionView({ rental, inspection }: { rental: Rental; inspection: In
         {inspection.photo_urls.map((u, i) => (
           <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt={`Foto serah terima ${i + 1}`} className="size-16 rounded-lg object-cover ring-1 ring-line" /></a>
         ))}
-        {rental.status === 'aktif' && (
+        {rental.status === 'aktif' && !rental.inspections?.kembali && (
           <>
             <button type="button" disabled={uploading} onClick={() => input.current?.click()} className="grid size-16 place-items-center rounded-lg border-2 border-dashed border-line-strong text-ink-muted hover:border-brand-300" aria-label="Tambah foto serah terima">
               <Camera className="size-5" />
@@ -143,6 +145,8 @@ export function RentalDetailModal({ rentalId, onClose }: { rentalId: number | nu
   const [paying, setPaying] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [invoiceId, setInvoiceId] = useState<number | null>(null)
   const close = () => { setPaying(false); onClose() }
 
   return (
@@ -153,10 +157,12 @@ export function RentalDetailModal({ rentalId, onClose }: { rentalId: number | nu
         size="lg"
         title={r ? r.code : 'Detail transaksi'}
         description={r ? `Dibuat ${dateTimeWib(r.created_at)}${r.created_by ? ` oleh ${r.created_by}` : ''}` : undefined}
-        footer={r && (r.can.cancel || r.can.handover) ? (
+        footer={r ? (
           <>
             {r.can.cancel && <Button variant="ghost" className="mr-auto text-red-600" onClick={() => setCancelOpen(true)}><Ban className="size-4" /> Batalkan</Button>}
+            <Button variant="secondary" onClick={() => setInvoiceId(r.id)}><Receipt className="size-4" /> Nota</Button>
             {r.can.handover && <Button onClick={() => setHandoverOpen(true)}><KeyRound className="size-4" /> Serah terima</Button>}
+            {r.can.return && <Button onClick={() => setReturnOpen(true)}><Undo2 className="size-4" /> Kembali</Button>}
           </>
         ) : undefined}
       >
@@ -221,6 +227,8 @@ export function RentalDetailModal({ rentalId, onClose }: { rentalId: number | nu
                 <Line label={`Durasi × tarif (${r.billed_days} hari × ${rupiah(r.daily_rate)})`} value={rupiah(r.rental_amount)} />
                 {r.price_breakdown?.lines.some((l) => l.special) && <p className="text-2xs text-ink-muted">Termasuk tarif akhir pekan/libur pada {r.price_breakdown.lines.filter((l) => l.special).length} hari.</p>}
                 {r.discount > 0 && <Line label={`Diskon${r.discount_reason ? ` (${r.discount_reason})` : ''}`} value={`− ${rupiah(r.discount)}`} />}
+                {r.status === 'selesai' && <Line label={`Denda keterlambatan${r.late_extra_days ? ` (termasuk ${r.late_extra_days} hari tambahan)` : ''}`} value={rupiah(r.late_fee)} />}
+                {r.fees?.map((f) => <Line key={f.id} label={`${f.type_label}: ${f.reason}`} value={rupiah(f.amount)} />)}
                 <div className="border-t border-dashed border-line-strong pt-2"><Line strong label="Total tagihan" value={rupiah(r.billing.total_amount)} /></div>
                 <Line label="Pembayaran diterima" value={rupiah(r.billing.paid_amount)} />
                 <Line label="Sisa tagihan" value={<span className={r.billing.balance > 0 ? 'text-amber-700' : 'text-brand-700'}>{rupiah(r.billing.balance)}</span>} />
@@ -267,6 +275,12 @@ export function RentalDetailModal({ rentalId, onClose }: { rentalId: number | nu
                 : <p className="rounded-xl bg-canvas px-4 py-3 text-center text-xs text-ink-muted">{r.status === 'booking' ? 'Mobil belum diserahkan. Gunakan tombol "Serah terima" saat pelanggan mengambil mobil.' : 'Tidak ada data serah terima.'}</p>}
             </Section>
 
+            {r.inspections?.kembali && (
+              <Section title="Kembali">
+                <InspectionView rental={r} inspection={r.inspections.kembali} />
+              </Section>
+            )}
+
             {r.notes && <Section title="Catatan"><p className="text-sm whitespace-pre-line text-ink-soft">{r.notes}</p></Section>}
           </div>
         )}
@@ -274,6 +288,8 @@ export function RentalDetailModal({ rentalId, onClose }: { rentalId: number | nu
 
       {r && <HandoverModal key={`h${r.id}${handoverOpen}`} rental={r} open={handoverOpen} onClose={() => setHandoverOpen(false)} />}
       {r && <CancelModal key={`c${r.id}${cancelOpen}`} rental={r} open={cancelOpen} onClose={() => setCancelOpen(false)} />}
+      {r && r.status === 'aktif' && <ReturnModal key={`r${r.id}${returnOpen}`} rental={r} open={returnOpen} onClose={() => setReturnOpen(false)} onDone={(x) => setInvoiceId(x.id)} />}
+      <InvoiceModal rentalId={invoiceId} onClose={() => setInvoiceId(null)} />
     </>
   )
 }

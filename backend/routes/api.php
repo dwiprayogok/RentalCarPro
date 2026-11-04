@@ -7,11 +7,14 @@ use App\Http\Controllers\Api\V1\CarController;
 use App\Http\Controllers\Api\V1\CarPhotoController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerDocumentController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\MaintenanceRecordController;
 use App\Http\Controllers\Api\V1\RentalController;
 use App\Http\Controllers\Api\V1\RentalInspectionController;
+use App\Http\Controllers\Api\V1\RentalInvoiceController;
 use App\Http\Controllers\Api\V1\RentalPaymentController;
+use App\Http\Controllers\Api\V1\RentalReturnController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +41,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->group(function () {
+        Route::get('dashboard', DashboardController::class)->name('dashboard');
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
 
@@ -66,6 +70,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('rentals/{rental}', [RentalController::class, 'show'])->name('rentals.show');
         Route::post('rentals/{rental}/handover', [RentalController::class, 'handover'])->name('rentals.handover');
         Route::post('rentals/{rental}/cancel', [RentalController::class, 'cancel'])->name('rentals.cancel');
+        Route::post('rentals/{rental}/return/preview', [RentalReturnController::class, 'preview'])->name('rentals.return.preview');
+        Route::post('rentals/{rental}/return', [RentalReturnController::class, 'store'])->name('rentals.return');
+        Route::get('rentals/{rental}/invoice', [RentalInvoiceController::class, 'show'])->name('rentals.invoice');
+        Route::get('rentals/{rental}/invoice/pdf', [RentalInvoiceController::class, 'pdf'])->name('rentals.invoice.pdf');
+        Route::post('rentals/{rental}/invoice/print-url', [RentalInvoiceController::class, 'printUrl'])->name('rentals.invoice.print-url');
         Route::post('rentals/{rental}/payments', [RentalPaymentController::class, 'store'])->name('rentals.payments.store');
         Route::delete('rentals/{rental}/payments/{payment}', [RentalPaymentController::class, 'destroy'])->scopeBindings()->name('rentals.payments.destroy');
         Route::post('rentals/{rental}/inspections/{type}/photos', [RentalInspectionController::class, 'storePhotos'])
@@ -89,6 +98,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware(['signed', 'throttle:120,1'])->group(function () {
         Route::get('rentals/{rental}/payments/{payment}/proof', [RentalPaymentController::class, 'proof'])
             ->scopeBindings()->name('rentals.payments.proof');
+        Route::get('rentals/{rental}/invoice/shared.pdf', [RentalInvoiceController::class, 'shared'])->name('rentals.invoice.shared');
         Route::get('rentals/{rental}/inspections/{type}/photos/{index}', [RentalInspectionController::class, 'photo'])
             ->whereIn('type', ['serah_terima', 'kembali'])->whereNumber('index')->name('rentals.inspections.photo');
     });
