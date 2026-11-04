@@ -17,6 +17,7 @@ import { P } from '@/lib/permissions'
 import { useDebounce } from '@/lib/useDebounce'
 import { downloadRentalsCsv, useRentals } from './api'
 import { PaymentBadge, RentalStatusBadge } from './badges'
+import { InvoiceModal } from './InvoiceModal'
 import { NewRentalModal } from './NewRentalModal'
 import { RentalDetailModal } from './RentalDetailModal'
 import type { Rental, RentalView } from './types'
@@ -50,6 +51,7 @@ export function RentalsPage() {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [invoiceId, setInvoiceId] = useState<number | null>(null)
 
   const update = (next: Record<string, string | number | null>) => {
     const p = new URLSearchParams(params)
@@ -126,7 +128,12 @@ export function RentalsPage() {
                     <td className="px-3 py-3.5 text-xs text-ink-soft"><p>{dateTimeWib(r.start_at)}</p><p className={r.is_overdue ? 'font-semibold text-red-700' : ''}>→ {dateTimeWib(r.planned_end_at)}</p></td>
                     <td className="px-3 py-3.5"><Amount r={r} /></td>
                     <td className="px-3 py-3.5"><RentalStatusBadge rental={r} /></td>
-                    <td className="px-5 py-3.5"><Button size="sm" variant="secondary" onClick={() => setDetailId(r.id)} aria-label={`Detail ${r.code}`}>Detail</Button></td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setDetailId(r.id)} aria-label={`Detail ${r.code}`}>Detail</Button>
+                        <Button size="sm" variant="secondary" onClick={() => setInvoiceId(r.id)} aria-label={`Nota ${r.code}`}>Nota</Button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -142,7 +149,10 @@ export function RentalsPage() {
                   <p className="text-xs text-ink-soft">{dateTimeWib(r.start_at)} → <span className={r.is_overdue ? 'font-semibold text-red-700' : ''}>{dateTimeWib(r.planned_end_at)}</span></p>
                   <div className="flex items-end justify-between gap-2">
                     <Amount r={r} />
-                    <Button size="sm" variant="secondary" onClick={() => setDetailId(r.id)}>Detail</Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setDetailId(r.id)}>Detail</Button>
+                      <Button size="sm" variant="secondary" onClick={() => setInvoiceId(r.id)}>Nota</Button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -154,6 +164,7 @@ export function RentalsPage() {
 
       <NewRentalModal open={creating} onClose={() => setCreating(false)} onCreated={(r) => setDetailId(r.id)} />
       <RentalDetailModal rentalId={detailId} onClose={() => setDetailId(null)} />
+      <InvoiceModal rentalId={invoiceId} onClose={() => setInvoiceId(null)} />
     </>
   )
 }

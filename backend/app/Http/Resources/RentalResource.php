@@ -73,6 +73,10 @@ class RentalResource extends JsonResource
             'rental_amount' => $this->rental_amount,
             'price_breakdown' => $this->when($detail, $this->price_breakdown),
             'late_fee' => $this->late_fee,
+            'late_extra_days' => $this->late_extra_days,
+            'fees' => $this->when($this->relationLoaded('fees'), fn () => $this->fees->map(fn ($f) => [
+                'id' => $f->id, 'type' => $f->type->value, 'type_label' => $f->type->label(), 'amount' => $f->amount, 'reason' => $f->reason,
+            ])),
             'extra_fees_total' => $this->extra_fees_total,
             'discount' => $this->discount,
             'discount_reason' => $this->discount_reason,
@@ -114,6 +118,7 @@ class RentalResource extends JsonResource
             'created_at' => $this->wib($this->created_at),
             'can' => [
                 'handover' => $this->status->value === 'booking' && (bool) $user?->can('handover', $this->resource),
+                'return' => $this->status->value === 'aktif' && (bool) $user?->can('return', $this->resource),
                 'cancel' => $this->status->value === 'booking' && (bool) $user?->can('cancel', $this->resource),
                 'add_payment' => $this->status->value !== 'batal' && (bool) $user?->can('addPayment', $this->resource),
                 'delete_payment' => ! in_array($this->status->value, ['selesai', 'batal'], true) && (bool) $user?->can('deletePayment', $this->resource),

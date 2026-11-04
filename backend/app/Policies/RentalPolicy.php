@@ -28,6 +28,11 @@ class RentalPolicy
         return $user->can(Permissions::RENTAL_HANDOVER);
     }
 
+    public function return(User $user, Rental $rental): bool
+    {
+        return $user->can(Permissions::RENTAL_RETURN);
+    }
+
     public function cancel(User $user, Rental $rental): bool
     {
         return $user->can(Permissions::RENTAL_CANCEL);

@@ -6,7 +6,9 @@ import { number } from '@/lib/format'
 import { FUEL_LEVELS, type HandoverValue } from './handover'
 
 /** Checklist serah terima: odometer, BBM, kondisi, catatan, foto (diunggah setelah disimpan, privat). */
-export function HandoverFields({ value, onChange, minOdometer, errors = {} }: {
+export function HandoverFields({ value, onChange, minOdometer, errors = {}, odometerLabel = 'Odometer awal (km)', photoLabel = 'Foto kondisi (privat)' }: {
+  odometerLabel?: string
+  photoLabel?: string
   value: HandoverValue
   onChange: (v: HandoverValue) => void
   minOdometer?: number
@@ -29,7 +31,7 @@ export function HandoverFields({ value, onChange, minOdometer, errors = {} }: {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Odometer awal (km)" required hint={minOdometer !== undefined ? `Terakhir tercatat ${number(minOdometer)} km.` : undefined} error={odoError}>
+        <Field label={odometerLabel} required hint={minOdometer !== undefined ? `Terakhir tercatat ${number(minOdometer)} km.` : undefined} error={odoError}>
           {(a) => (
             <Input
               {...a}
@@ -101,12 +103,12 @@ export function HandoverFields({ value, onChange, minOdometer, errors = {} }: {
         </ul>
       </div>
 
-      <Field label="Catatan serah terima">
-        {(a) => <Textarea {...a} rows={2} value={value.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Mis. kunci + STNK diserahkan" />}
+      <Field label="Catatan kondisi">
+        {(a) => <Textarea {...a} rows={2} value={value.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Mis. kunci & STNK lengkap" />}
       </Field>
 
       <div>
-        <p className="mb-1.5 text-xs font-semibold text-ink-soft">Foto kondisi (privat)</p>
+        <p className="mb-1.5 text-xs font-semibold text-ink-soft">{photoLabel}</p>
         <div className="flex flex-wrap gap-2">
           {previews.map((src, i) => (
             <div key={src} className="relative">

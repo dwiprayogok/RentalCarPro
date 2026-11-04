@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { api } from '@/lib/api'
 import type { Paginated } from '@/lib/types'
 import { carKeys } from '@/features/cars/api'
-import type { AvailabilityBlock, ChecklistItem, Quote, Rental, RentalView } from './types'
+import type { AvailabilityBlock, ChecklistItem, FeeType, Invoice, Quote, Rental, RentalView, ReturnPreview } from './types'
 
 export interface RentalFilters { search?: string; view?: RentalView; page?: number }
 
@@ -146,5 +146,76 @@ export function useAvailability(carId: number | null, from: string, to: string) 
     queryFn: async () => (await api.get<{ data: AvailabilityBlock[]; meta: { buffer_minutes: number; car_status: string } }>(`/cars/${carId}/availability`, { params: { from, to } })).data,
     enabled: !!carId,
     placeholderData: keepPreviousData,
+  })
+}
+
+export interface ReturnInput {
+  returned_at?: string | null
+  odometer?: number | null
+  fuel_level?: number
+  checklist?: ChecklistItem[]
+  notes?: string | null
+  fees?: { type: FeeType; amount: number; reason: string }[]
+  deposit_deduction?: number | null
+  payment?: { amount: number; method: 'tunai' | 'transfer' | 'qris'; reference_number?: string | null } | null
+  refund_method?: 'tunai' | 'transfer' | 'qris' | null
+  car_status?: 'tersedia' | 'servis' | null
+}
+
+export function useReturnPreview(id: number, input: ReturnInput | null) {
+  return useQuery({
+    queryKey: ['rentals', 'return-preview', id, input],
+    queryFn: async () => (await api.post<{ data: ReturnPreview }>(`/rentals/${id}/return/preview`, input)).data.data,
+    enabled: !!input,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useCompleteReturn(id: number) {
+  const invalidate = useInvalidateRentals()
+  return useMutation({
+    mutationFn: async (input: ReturnInput) => (await api.post<{ data: Rental; message: string }>(`/rentals/${id}/return`, input)).data,
+    onSuccess: ({ data }) => invalidate(data),
+  })
+}
+
+export function useInvoice(id: number | null) {
+  return useQuery({
+    queryKey: ['rentals', 'invoice', id],
+    queryFn: async () => (await api.get<{ data: Invoice }>(`/rentals/${id}/invoice`)).data.data,
+    enabled: !!id,
+  })
+}
+
+/**
+ * Buka PDF nota (dibuat di server) di tab baru. Tab dibuka SEBELUM menunggu API agar tidak
+ * diblokir popup blocker, lalu diarahkan ke signed URL 2 menit (tidak bergantung cookie/Referer).
+ */
+export async function openInvoicePdf(id: number): Promise<void> {
+  const tab = window.open('', '_blank')
+  try {
+    const { data } = await api.post<{ data: { url: string } }>(`/rentals/${id}/invoice/print-url`)
+    if (tab) tab.location.href = data.data.url
+    else window.location.href = data.data.url
+  } catch (e) {
+    tab?.close()
+    throw e
+  }
+}
+
+export interface DashboardData {
+  counts: { aktif: number; terlambat: number; kembali_hari_ini: number; ambil_hari_ini: number; belum_lunas: number; mobil_tersedia: number; mobil_total: number }
+  receivable: number
+  running_late_total: number
+  overdue: Rental[]
+  returns_today: Rental[]
+  pickups_today: Rental[]
+}
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: ['rentals', 'dashboard'],
+    queryFn: async () => (await api.get<{ data: DashboardData }>('/dashboard')).data.data,
+    refetchInterval: 60_000,
   })
 }

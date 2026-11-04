@@ -63,6 +63,10 @@ export interface Rental {
   price_breakdown?: { billed_days: number; duration_minutes: number; lines: { date: string; rate: number; special: boolean }[] } | null
   discount: number
   discount_reason: string | null
+  late_fee: number
+  late_extra_days: number
+  extra_fees_total: number
+  fees?: { id: number; type: string; type_label: string; amount: number; reason: string }[]
   billing: Billing
   notes: string | null
   cancel_reason: string | null
@@ -71,7 +75,7 @@ export interface Rental {
   inspections?: Partial<Record<'serah_terima' | 'kembali', Inspection>>
   created_by?: string | null
   created_at: string
-  can: { handover: boolean; cancel: boolean; add_payment: boolean; delete_payment: boolean }
+  can: { handover: boolean; return: boolean; cancel: boolean; add_payment: boolean; delete_payment: boolean }
 }
 
 export interface Quote {
@@ -97,4 +101,58 @@ export interface AvailabilityBlock {
   start_at: string
   end_at: string
   blocked_until: string
+}
+
+export type FeeType = 'bbm' | 'kebersihan' | 'kelebihan_km' | 'kerusakan' | 'lainnya'
+
+export interface ReturnPreview {
+  returned_at: string
+  planned_end_at: string
+  start_odometer: number
+  distance_km: number | null
+  late: { late_minutes: number; within_grace: boolean; extra_days: number; extra_days_amount: number; charged_hours: number; hourly_fee: number; capped: boolean; total: number; late_label: string }
+  fees: { type: FeeType; amount: number; reason: string }[]
+  extra_fees_total: number
+  rental_amount: number
+  discount: number
+  total_amount: number
+  paid_amount: number
+  balance_before: number
+  deposit_held: number
+  deposit_deduction_max: number
+  deposit_deduction: number
+  payment_amount: number
+  remaining: number
+  deposit_refund: number
+  has_damage: boolean
+  car_status: 'tersedia' | 'servis'
+  car_status_suggested: 'tersedia' | 'servis'
+  customer_flag: boolean
+  errors: Record<string, string>
+}
+
+export interface Invoice {
+  business: { name: string; tagline: string; address: string; whatsapp: string }
+  code: string
+  status: string
+  status_label: string
+  payment_status: PaymentStatus
+  payment_status_label: string
+  issued_at: string
+  customer: { name: string; phone: string; nik_masked: string; address: string | null }
+  car: { name: string; plate_number: string; year: number; color: string | null; transmission: string }
+  service_type_label: string
+  driver: { name: string; phone: string } | null
+  schedule: { start_at: string; planned_end_at: string; picked_up_at: string | null; returned_at: string | null; billed_days: number }
+  lines: { label: string; detail: string | null; amount: number }[]
+  totals: { total: number; paid: number; balance: number; running_late_fee: number; estimated_due: number }
+  deposit: { required: number; received: number; deducted: number; refunded: number; held: number }
+  payments: { type_label: string; method_label: string; paid_at: string; reference_number: string | null; amount: number; direction: 'in' | 'out' | 'internal' }[]
+  inspections: Record<'serah_terima' | 'kembali', { odometer: number; fuel_label: string; at: string; issues: string[] } | null>
+  note: string | null
+  terms: string[]
+  footer: string
+  pdf_share_url: string
+  whatsapp_url: string
+  whatsapp_message: string
 }
