@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from 'react'
 import type { Period, PublicCar } from '@/lib/types'
 import { ApiError, publicFetch } from '@/lib/client-api'
 import { waLink, wibLocal, wibToIso } from '@/lib/format'
@@ -16,7 +16,10 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
   const router = useRouter()
   const pathname = usePathname()
   const sp = useSearchParams()
-  const f: Filters = {
+  // Filter baru langsung tampil aktif (optimistic) selama URL diperbarui di latar belakang.
+  const [isPending, startTransition] = useTransition()
+  const [optimistic, applyOptimistic] = useOptimistic<Partial<Filters>, Partial<Filters>>({}, (cur, patch) => ({ ...cur, ...patch }))
+  const fromUrl: Filters = {
     transmission: sp.get('transmission') ?? '',
     seats: sp.get('seats') ?? '',
     sort: sp.get('sort') ?? 'price_asc',
@@ -25,10 +28,14 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
     end: DT.test(sp.get('end') ?? '') ? sp.get('end')! : '',
     tersedia: sp.get('tersedia') ?? '',
   }
+  const f: Filters = { ...fromUrl, ...optimistic }
   const set = (patch: Partial<Filters>) => {
     const next = new URLSearchParams()
     Object.entries({ ...f, ...patch }).forEach(([k, v]) => v && !(k === 'sort' && v === 'price_asc') && !(k === 'service' && v === 'lepas_kunci') && next.set(k, v))
-    router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false })
+    startTransition(() => {
+      applyOptimistic(patch)
+      router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false })
+    })
   }
 
   // Draf tanggal: baru dikirim saat tombol "Cek" ditekan.
@@ -70,6 +77,8 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
     return out
   }, [cars, periods, f.transmission, f.seats, f.sort, f.service, f.tersedia])
 
+  const busy = isPending || loading
+  const busyText = loading ? 'Memeriksa ketersediaan…' : 'Memuat mobil…'
   const query = f.start && f.end ? `?${new URLSearchParams({ start: f.start, end: f.end, service: f.service })}` : ''
   const availableCount = periods ? Object.values(periods).filter((p) => p.available).length : 0
   const seatOptions = [...new Set(cars.map((c) => c.seats))].sort((a, b) => a - b)
@@ -95,7 +104,9 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
             </select>
           </label>
           <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
-            <button className="btn-primary h-11 flex-1" disabled={loading}>{loading ? 'Memeriksa…' : 'Cek'}</button>
+            <button className="btn-primary h-11 flex-1" disabled={loading} aria-busy={loading}>
+              {loading ? <><Spinner className="size-4 border-white/40 border-t-white" /> Memeriksa…</> : 'Cek'}
+            </button>
             {(f.start || f.end) && <button type="button" className="btn-light h-11" onClick={() => set({ start: '', end: '', tersedia: '' })}>Reset</button>}
           </div>
         </div>
@@ -122,10 +133,16 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
         </select>
       </div>
 
-      <div className="mt-4 flex min-h-6 flex-wrap items-center justify-between gap-2 text-sm text-muted" aria-live="polite">
-        <span>
-          {periods ? `${availableCount} dari ${cars.length} mobil tersedia di tanggal pilihan` : `${list.length} mobil`}
-        </span>
+      <div className="relative mt-4 h-1 overflow-hidden rounded-full bg-line/60" aria-hidden>
+        {busy && <span className="loading-bar absolute inset-y-0 w-1/3 rounded-full bg-brand" />}
+      </div>
+
+      <div className="mt-3 flex min-h-6 flex-wrap items-center justify-between gap-2 text-sm text-muted" aria-live="polite">
+        {busy ? (
+          <span className="delayed-in inline-flex items-center gap-2 font-medium text-brand"><Spinner /> {busyText}</span>
+        ) : (
+          <span>{periods ? `${availableCount} dari ${cars.length} mobil tersedia di tanggal pilihan` : `${list.length} mobil`}</span>
+        )}
         {periods && (
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" className="size-4 accent-brand" checked={!!f.tersedia} onChange={(e) => set({ tersedia: e.target.checked ? '1' : '' })} />
@@ -134,9 +151,15 @@ export function Fleet({ cars, whatsappUrl }: { cars: PublicCar[]; whatsappUrl: s
         )}
       </div>
 
-      {list.length ? (
-        <div className={`mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}>
-          {list.map((c, i) => <CarCard key={c.slug} car={c} query={query} priority={i < 2} />)}
+      {loading && !periods ? (
+        <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label={busyText}>
+          {Array.from({ length: Math.min(Math.max(list.length, 3), 6) }, (_, i) => <CardSkeleton key={i} />)}
+        </div>
+      ) : list.length ? (
+        <div className="mt-4" aria-busy={busy}>
+          <div className={`grid gap-5 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${busy ? 'pointer-events-none opacity-50 delay-150' : 'opacity-100'}`}>
+            {list.map((c, i) => <CarCard key={c.slug} car={c} query={query} priority={i < 2} />)}
+          </div>
         </div>
       ) : (
         <div className="card mt-4 p-10 text-center">
@@ -162,5 +185,26 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       className={`min-h-10 rounded-full px-4 text-sm font-semibold transition-colors ${active ? 'bg-ink text-white' : 'bg-white text-ink ring-1 ring-line hover:bg-canvas'}`}>
       {children}
     </button>
+  )
+}
+
+function Spinner({ className = 'size-4 border-brand/25 border-t-brand' }: { className?: string }) {
+  return <span aria-hidden className={`inline-block animate-spin rounded-full border-2 motion-reduce:animate-none ${className}`} />
+}
+
+function CardSkeleton() {
+  return (
+    <div className="card overflow-hidden" aria-hidden>
+      <div className="skeleton aspect-[16/10]" />
+      <div className="space-y-3 p-5">
+        <div className="skeleton h-3 w-24 rounded-full" />
+        <div className="skeleton h-5 w-40 rounded-full" />
+        <div className="skeleton h-3 w-52 rounded-full" />
+        <div className="flex items-end justify-between pt-3">
+          <div className="skeleton h-7 w-32 rounded-full" />
+          <div className="skeleton h-10 w-16 rounded-full" />
+        </div>
+      </div>
+    </div>
   )
 }
