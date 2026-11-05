@@ -46,7 +46,15 @@ const SECTIONS: Section[] = [
     <p>Permintaan dari landing page masuk dengan status <strong>Baru</strong>. Klik <strong>Hubungi</strong> untuk membuka WhatsApp (status menjadi Dihubungi). Klik <strong>Jadikan Sewa</strong> untuk membuka Sewa Baru yang sudah terisi. Jika nomor HP belum terdaftar, isi data pelanggan terlebih dahulu.</p>
   ) },
   { id: 'laporan', icon: BarChart3, title: 'Laporan', body: (
-    <p>Menu <strong>Laporan Pembayaran</strong> (pemilik & admin) berisi pembayaran masuk per tanggal bayar, piutang, pendapatan per mobil, utilisasi armada, dan biaya servis. Pilih periode, metode, dan mobil, lalu <strong>Ekspor CSV</strong> untuk dibuka di Excel.</p>
+    <p>Menu <strong>Laporan Pembayaran</strong> (pemilik & admin) berisi pembayaran masuk per tanggal bayar, piutang, pendapatan per mobil, <strong>laba per mobil</strong>, utilisasi armada, dan biaya servis. Pilih periode, metode, dan mobil, lalu <strong>Ekspor CSV</strong> untuk dibuka di Excel.</p>
+  ) },
+  { id: 'pengeluaran', icon: Receipt, title: 'Pengeluaran & laba', body: (
+    <ul>
+      <li>Catat BBM, cuci, parkir/tol, asuransi, cicilan, gaji, sewa tempat, dan biaya lain di menu <strong>Pengeluaran</strong>. Lampirkan foto struk bila ada (tersimpan privat).</li>
+      <li>Pilih <strong>mobil</strong> bila biaya itu untuk satu mobil; kosongkan untuk pengeluaran <strong>umum</strong> usaha. Biaya servis tetap dicatat di Perawatan.</li>
+      <li>Laporan <strong>Laba per mobil</strong> = pendapatan diterima − biaya perawatan − pengeluaran mobil itu. Laba bersih usaha juga dikurangi pengeluaran umum.</li>
+      <li>Staf boleh mencatat pengeluaran; mengubah atau menghapus hanya pemilik/admin, dan semuanya tercatat di Log Aktivitas.</li>
+    </ul>
   ) },
   { id: 'peran', icon: ShieldCheck, title: 'Peran & keamanan', body: (
     <ul>

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerDocumentController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DriverController;
+use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\HolidayController;
 use App\Http\Controllers\Api\V1\MaintenanceRecordController;
 use App\Http\Controllers\Api\V1\RentalController;
@@ -110,6 +111,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('revenue-by-car', [ReportController::class, 'revenueByCar'])->name('revenue-by-car');
             Route::get('utilization', [ReportController::class, 'utilization'])->name('utilization');
             Route::get('maintenance', [ReportController::class, 'maintenance'])->name('maintenance');
+            Route::get('profit', [ReportController::class, 'profit'])->name('profit');
             Route::get('{type}/export', [ReportController::class, 'export'])
                 ->whereIn('type', ReportController::TYPES)->name('export');
         });
@@ -118,6 +120,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::apiResource('drivers', DriverController::class);
         Route::apiResource('maintenance', MaintenanceRecordController::class)
             ->parameters(['maintenance' => 'maintenance']);
+
+        // Pengeluaran operasional
+        Route::apiResource('expenses', ExpenseController::class);
     });
 
     // Berkas KTP/SIM: tanpa sesi (dipakai di <img>), tetapi WAJIB signed URL berumur pendek.
@@ -130,6 +135,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware(['signed', 'throttle:120,1'])->group(function () {
         Route::get('rentals/{rental}/payments/{payment}/proof', [RentalPaymentController::class, 'proof'])
             ->scopeBindings()->name('rentals.payments.proof');
+        Route::get('expenses/{expense}/proof', [ExpenseController::class, 'proof'])->name('expenses.proof');
         Route::get('rentals/{rental}/invoice/shared.pdf', [RentalInvoiceController::class, 'shared'])->name('rentals.invoice.shared');
         Route::get('rentals/{rental}/inspections/{type}/photos/{index}', [RentalInspectionController::class, 'photo'])
             ->whereIn('type', ['serah_terima', 'kembali'])->whereNumber('index')->name('rentals.inspections.photo');

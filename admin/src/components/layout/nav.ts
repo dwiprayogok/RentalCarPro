@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, HelpCircle, History, Inbox, LayoutGrid, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, CarFront, FileText, HelpCircle, History, Inbox, LayoutGrid, Receipt, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
 import { P } from '@/lib/permissions'
 
 export interface NavItem {
@@ -15,6 +15,7 @@ export const workspaceNav: NavItem[] = [
   { to: '/armada', label: 'Armada Mobil', icon: CarFront, anyOf: [P.carView] },
   { to: '/pelanggan', label: 'Pelanggan', icon: Users, anyOf: [P.customerView] },
   { to: '/permintaan-booking', label: 'Permintaan Booking', icon: Inbox, anyOf: [P.bookingRequestView] },
+  { to: '/pengeluaran', label: 'Pengeluaran', icon: Receipt, anyOf: [P.expenseView] },
 ]
 
 export const insightNav: NavItem[] = [

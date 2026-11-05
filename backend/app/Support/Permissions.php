@@ -87,6 +87,15 @@ final class Permissions
 
     public const MAINTENANCE_DELETE = 'maintenance.delete';
 
+    // Pengeluaran operasional (BBM, cuci, gaji, dll.)
+    public const EXPENSE_VIEW = 'expense.view';
+
+    public const EXPENSE_CREATE = 'expense.create';
+
+    public const EXPENSE_UPDATE = 'expense.update';
+
+    public const EXPENSE_DELETE = 'expense.delete';
+
     // Permintaan booking dari landing
     public const BOOKING_REQUEST_VIEW = 'booking_request.view';
 
@@ -150,6 +159,8 @@ final class Permissions
             self::CUSTOMER_VIEW_DOCUMENTS,
             self::DRIVER_VIEW,
             self::MAINTENANCE_VIEW,
+            self::EXPENSE_VIEW,
+            self::EXPENSE_CREATE,
             self::BOOKING_REQUEST_VIEW,
             self::BOOKING_REQUEST_UPDATE,
             self::REPORT_OPERATIONAL,

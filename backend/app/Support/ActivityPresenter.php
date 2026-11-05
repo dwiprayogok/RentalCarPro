@@ -2,9 +2,11 @@
 
 namespace App\Support;
 
+use App\Enums\ExpenseCategory;
 use App\Models\BookingRequest;
 use App\Models\Car;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\Holiday;
 use App\Models\Rental;
 use App\Models\RentalFee;
@@ -23,6 +25,7 @@ final class ActivityPresenter
     public const MODULES = [
         'rental' => 'Transaksi', 'payment' => 'Pembayaran', 'rental_fee' => 'Biaya tambahan', 'customer' => 'Pelanggan',
         'car' => 'Armada', 'booking_request' => 'Permintaan booking', 'setting' => 'Pengaturan', 'user' => 'Pengguna',
+        'expense' => 'Pengeluaran',
     ];
 
     public const EVENTS = [
@@ -46,6 +49,7 @@ final class ActivityPresenter
         'date' => 'Tanggal', 'deposit_deduction' => 'Potong deposit', 'deposit_refund' => 'Deposit kembali',
         'payment_amount' => 'Pembayaran akhir', 'remaining' => 'Sisa tagihan', 'car_status' => 'Status mobil',
         'customer_flagged' => 'Pelanggan ditandai Perhatian', 'customer_id' => 'Pelanggan',
+        'category' => 'Kategori', 'title' => 'Keterangan', 'spent_at' => 'Tanggal', 'vendor' => 'Toko/vendor',
     ];
 
     private const MONEY = [
@@ -84,6 +88,7 @@ final class ActivityPresenter
             $s instanceof RentalFee => ['type' => 'fee', 'id' => $id, 'label' => "{$s->type->label()} · ".($s->rental?->code ?? ''), 'link' => null],
             $s instanceof Customer => ['type' => 'customer', 'id' => $id, 'label' => $s->name, 'link' => "/pelanggan?q={$s->phone}"],
             $s instanceof Car => ['type' => 'car', 'id' => $id, 'label' => "{$s->display_name} · {$s->plate_number}", 'link' => '/armada?q='.urlencode($s->plate_number)],
+            $s instanceof Expense => ['type' => 'expense', 'id' => $id, 'label' => "{$s->category->label()} · {$s->title}", 'link' => '/pengeluaran'],
             $s instanceof Setting => ['type' => 'setting', 'id' => $id, 'label' => $s->label, 'link' => '/pengaturan'],
             $s instanceof Holiday => ['type' => 'holiday', 'id' => $id, 'label' => "Hari libur {$s->date->toDateString()}", 'link' => '/pengaturan'],
             $s instanceof User => ['type' => 'user', 'id' => $id, 'label' => "{$s->name} ({$s->email})", 'link' => '/pengguna'],
@@ -155,6 +160,16 @@ final class ActivityPresenter
         if (in_array($field, ['start_at', 'planned_end_at', 'returned_at', 'paid_at'], true) && is_string($v)) {
             try {
                 return Carbon::parse($v)->setTimezone(config('app.display_timezone'))->locale('id')->translatedFormat('j M Y H.i').' WIB';
+            } catch (\Throwable) {
+                return $v;
+            }
+        }
+        if ($field === 'category' && is_string($v) && ($c = ExpenseCategory::tryFrom($v))) {
+            return $c->label();
+        }
+        if ($field === 'spent_at' && is_string($v)) {
+            try {
+                return Carbon::parse(substr($v, 0, 10))->locale('id')->translatedFormat('j M Y');
             } catch (\Throwable) {
                 return $v;
             }

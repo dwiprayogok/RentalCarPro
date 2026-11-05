@@ -22,6 +22,7 @@ const TABS: { value: ReportTab; label: string }[] = [
   { value: 'pembayaran', label: 'Pembayaran masuk' },
   { value: 'piutang', label: 'Piutang' },
   { value: 'pendapatan', label: 'Pendapatan per mobil' },
+  { value: 'laba', label: 'Laba per mobil' },
   { value: 'utilisasi', label: 'Utilisasi armada' },
   { value: 'servis', label: 'Biaya servis' },
 ]
@@ -65,7 +66,7 @@ function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm">
-        <thead><tr className="border-b border-line text-left text-2xs font-bold tracking-[0.12em] text-ink-muted uppercase">{head.map((h, i) => <th key={h} className={cn('px-4 py-3', i > 0 && /Jumlah|Total|Pendapatan|Sisa|Denda|Terbayar|Biaya|Hari|Sewa|Utilisasi/.test(h) && 'text-right')}>{h}</th>)}</tr></thead>
+        <thead><tr className="border-b border-line text-left text-2xs font-bold tracking-[0.12em] text-ink-muted uppercase">{head.map((h, i) => <th key={h} className={cn('px-4 py-3', i > 0 && /Jumlah|Total|Pendapatan|Sisa|Denda|Terbayar|Biaya|Hari|Sewa|Utilisasi|Perawatan|Pengeluaran|Laba|Margin/.test(h) && 'text-right')}>{h}</th>)}</tr></thead>
         <tbody className="divide-y divide-line">{children}</tbody>
       </table>
     </div>
@@ -176,6 +177,53 @@ function RevenueTab({ f }: { f: ReportFilters }) {
   )
 }
 
+function ProfitTab({ f }: { f: ReportFilters }) {
+  const q = useReport<any>('laba', f)
+  if (q.isLoading) return <Skeleton className="h-64" />
+  if (q.isError) return <div className="card"><ErrorState error={q.error} onRetry={() => q.refetch()} /></div>
+  const s = q.data.summary
+  const money = (v: number) => <span className={cn(v < 0 && 'text-red-700')}>{rupiah(v)}</span>
+  const pct = (v: number | null) => (v === null ? '–' : `${v.toLocaleString('id-ID')}%`)
+  return (
+    <div className={cn('space-y-4', q.isPlaceholderData && 'opacity-60')}>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Pendapatan diterima" value={rupiah(s.income)} />
+        <Stat label="Biaya perawatan" value={rupiah(s.maintenance)} />
+        <Stat label="Pengeluaran" value={rupiah(s.car_expenses + s.general_expenses)} hint={f.car_id ? 'pengeluaran mobil ini' : `${rupiah(s.car_expenses)} per mobil · ${rupiah(s.general_expenses)} umum`} />
+        <Stat label={f.car_id ? 'Laba mobil' : 'Laba bersih usaha'} value={rupiah(s.net_profit)} hint={`Margin ${pct(s.margin_pct)}`} tone={s.net_profit < 0 ? 'red' : undefined} />
+      </div>
+      <div className="card overflow-hidden">
+        <Table head={['Mobil', 'Pendapatan', 'Perawatan', 'Pengeluaran', 'Laba', 'Margin']}>
+          {q.data.data.map((r: any) => (
+            <tr key={r.car_id}>
+              <Td><span className="font-semibold">{r.car}</span><br /><span className="text-2xs text-ink-muted">{r.plate_number}</span></Td>
+              <Td right>{rupiah(r.income)}</Td>
+              <Td right>{rupiah(r.maintenance)}</Td>
+              <Td right>{rupiah(r.expenses)}</Td>
+              <Td right className="font-bold">{money(r.profit)}</Td>
+              <Td right>{r.profit < 0 ? <Badge tone="red" dot={false}>Rugi</Badge> : pct(r.margin_pct)}</Td>
+            </tr>
+          ))}
+          {!f.car_id && (
+            <>
+              <tr className="bg-canvas/60">
+                <Td><span className="font-semibold">Pengeluaran umum</span><br /><span className="text-2xs text-ink-muted">{s.general_by_category.map((c: any) => c.label).join(', ') || 'tidak ada'}</span></Td>
+                <Td right>–</Td><Td right>–</Td><Td right>{rupiah(s.general_expenses)}</Td><Td right className="font-bold">{money(-s.general_expenses)}</Td><Td right>–</Td>
+              </tr>
+              <tr className="border-t-2 border-line-strong">
+                <Td className="font-extrabold">Laba bersih usaha</Td>
+                <Td right className="font-semibold">{rupiah(s.income)}</Td><Td right>{rupiah(s.maintenance)}</Td><Td right>{rupiah(s.car_expenses + s.general_expenses)}</Td>
+                <Td right className="text-base font-extrabold">{money(s.net_profit)}</Td><Td right className="font-semibold">{pct(s.margin_pct)}</Td>
+              </tr>
+            </>
+          )}
+        </Table>
+      </div>
+      <p className="text-2xs text-ink-muted">Laba = pendapatan diterima (per tanggal bayar, deposit titipan tidak dihitung) − biaya perawatan − pengeluaran mobil itu. Pengeluaran umum tidak dibagi ke mobil, tetapi mengurangi laba bersih usaha.</p>
+    </div>
+  )
+}
+
 function UtilizationTab({ f }: { f: ReportFilters }) {
   const q = useReport<any>('utilisasi', f)
   if (q.isLoading) return <Skeleton className="h-64" />
@@ -253,7 +301,7 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Laporan Pembayaran"
-        subtitle="Pembayaran masuk, piutang, pendapatan, utilisasi, dan biaya servis. Semua tanggal dalam WIB."
+        subtitle="Pembayaran masuk, piutang, pendapatan, laba per mobil, utilisasi, dan biaya servis. Semua tanggal dalam WIB."
         action={<Button variant="secondary" loading={exporting} onClick={async () => {
           setExporting(true)
           try { await downloadReportCsv(tab, f) } catch (e) { toast(errorMessage(e), 'error') } finally { setExporting(false) }
@@ -302,6 +350,7 @@ export function ReportsPage() {
       {tab === 'pembayaran' && <PaymentsTab f={{ ...f, method: f.method }} onPage={(p) => update({ page: p })} />}
       {tab === 'piutang' && <ReceivablesTab f={{ ...f, method: '' }} onPage={(p) => update({ page: p })} />}
       {tab === 'pendapatan' && <RevenueTab f={{ ...f, method: '' }} />}
+      {tab === 'laba' && <ProfitTab f={{ ...f, method: '' }} />}
       {tab === 'utilisasi' && <UtilizationTab f={{ ...f, method: '' }} />}
       {tab === 'servis' && <MaintenanceTab f={{ ...f, method: '' }} />}
     </>

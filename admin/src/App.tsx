@@ -7,6 +7,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { RentalsPage } from '@/features/rentals/RentalsPage'
 import { BookingRequestsPage } from '@/features/booking-requests/BookingRequestsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
+import { ExpensesPage } from '@/features/expenses/ExpensesPage'
 import { GuidePage } from '@/pages/GuidePage'
 import { ActivityLogPage } from '@/features/admin/ActivityLogPage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
           { path: 'armada', element: <RequirePermission anyOf={[P.carView]}><CarsPage /></RequirePermission> },
           { path: 'pelanggan', element: <RequirePermission anyOf={[P.customerView]}><CustomersPage /></RequirePermission> },
           { path: 'permintaan-booking', element: <RequirePermission anyOf={[P.bookingRequestView]}><BookingRequestsPage /></RequirePermission> },
+          { path: 'pengeluaran', element: <RequirePermission anyOf={[P.expenseView]}><ExpensesPage /></RequirePermission> },
           { path: 'laporan', element: <RequirePermission anyOf={[P.reportView]}><ReportsPage /></RequirePermission> },
           { path: 'panduan', element: <GuidePage /> },
           { path: 'pengaturan', element: <RequirePermission anyOf={[P.settingUpdate]}><SettingsPage /></RequirePermission> },

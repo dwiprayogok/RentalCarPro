@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class ReportController extends Controller
 {
-    public const TYPES = ['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance'];
+    public const TYPES = ['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance', 'profit'];
 
     public function __construct(private readonly ReportService $reports) {}
 
@@ -105,6 +105,15 @@ class ReportController extends Controller
         return response()->json(['data' => $m['cars'], 'summary' => collect($m)->except('cars'), 'meta' => $this->meta($f)]);
     }
 
+    /** Laba per mobil & laba bersih usaha (pendapatan − perawatan − pengeluaran). */
+    public function profit(Request $request): JsonResponse
+    {
+        $f = $this->filters($request);
+        $p = $this->reports->profit($f);
+
+        return response()->json(['data' => $p['cars'], 'summary' => $p['summary'], 'meta' => $this->meta($f)]);
+    }
+
     /** CSV (pemisah ";" + BOM UTF-8 agar langsung rapi di Excel Indonesia). */
     public function export(Request $request, string $type, RentalBilling $billing): StreamedResponse
     {
@@ -141,6 +150,19 @@ class ReportController extends Controller
             'maintenance' => [
                 ['Mobil', 'Plat', 'Jumlah Catatan', 'Total Biaya', ...collect(MaintenanceType::cases())->map->label()->all()],
                 $this->reports->maintenanceCosts($f)['cars']->map(fn ($r) => [$r['car'], $r['plate_number'], $r['records'], $r['total'], ...array_values($r['by_type'])]),
+            ],
+            'profit' => [
+                ['Mobil', 'Plat', 'Pendapatan Diterima', 'Biaya Perawatan', 'Pengeluaran Mobil', 'Total Biaya', 'Laba', 'Margin (%)'],
+                (function () use ($f) {
+                    $p = $this->reports->profit($f);
+                    foreach ($p['cars'] as $r) {
+                        yield [$r['car'], $r['plate_number'], $r['income'], $r['maintenance'], $r['expenses'], $r['costs'], $r['profit'], $r['margin_pct'] === null ? '' : str_replace('.', ',', (string) $r['margin_pct'])];
+                    }
+                    $s = $p['summary'];
+                    yield [];
+                    yield ['Pengeluaran umum (tidak per mobil)', '', '', '', $s['general_expenses'], $s['general_expenses'], -$s['general_expenses'], ''];
+                    yield ['LABA BERSIH USAHA', '', $s['income'], $s['maintenance'], $s['car_expenses'] + $s['general_expenses'], $s['maintenance'] + $s['car_expenses'] + $s['general_expenses'], $s['net_profit'], $s['margin_pct'] === null ? '' : str_replace('.', ',', (string) $s['margin_pct'])];
+                })(),
             ],
             default => abort(404),
         };

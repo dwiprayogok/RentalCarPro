@@ -4,6 +4,7 @@ namespace Tests\Feature\Reports;
 
 use App\Enums\PaymentType;
 use App\Models\Car;
+use App\Models\Expense;
 use App\Models\MaintenanceRecord;
 use App\Models\Rental;
 use App\Models\RentalPayment;
@@ -152,6 +153,47 @@ class ReportTest extends TestCase
         }
     }
 
+    public function test_profit_matches_raw_rows(): void
+    {
+        $this->assertGreaterThan(0, Expense::whereNull('car_id')->count(), 'seeder punya pengeluaran umum');
+        $res = $this->actingAs($this->owner())->getJson('/api/v1/reports/profit?from='.self::FROM.'&to='.self::TO)->assertOk();
+        $inRange = fn ($date) => $date->toDateString() >= self::FROM && $date->toDateString() <= self::TO;
+
+        $sumMaint = 0;
+        $sumCarExp = 0;
+        foreach ($res->json('data') as $row) {
+            $income = $this->income($this->paymentsInRange(null, $row['car_id']));
+            $maint = (int) MaintenanceRecord::where('car_id', $row['car_id'])->get()->filter(fn ($m) => $inRange($m->performed_at))->sum('cost');
+            $exp = (int) Expense::where('car_id', $row['car_id'])->get()->filter(fn ($e) => $inRange($e->spent_at))->sum('amount');
+            $this->assertSame([$income, $maint, $exp, $income - $maint - $exp], [$row['income'], $row['maintenance'], $row['expenses'], $row['profit']], $row['car']);
+            $sumMaint += $maint;
+            $sumCarExp += $exp;
+        }
+
+        $general = (int) Expense::whereNull('car_id')->get()->filter(fn ($e) => $inRange($e->spent_at))->sum('amount');
+        $this->assertGreaterThan(0, $general);
+        $income = $this->income($this->paymentsInRange());
+        $res->assertJsonPath('summary.general_expenses', $general)
+            ->assertJsonPath('summary.net_profit', $income - $sumMaint - $sumCarExp - $general);
+        $this->assertSame($general, collect($res->json('summary.general_by_category'))->sum('total'));
+
+        // Urut dari laba terbesar.
+        $profits = array_column($res->json('data'), 'profit');
+        $sorted = $profits;
+        rsort($sorted);
+        $this->assertSame($sorted, $profits);
+
+        // Filter per mobil: pengeluaran umum tidak ikut.
+        $car = Car::first();
+        $one = $this->actingAs($this->owner())->getJson('/api/v1/reports/profit?from='.self::FROM.'&to='.self::TO."&car_id={$car->id}")->assertOk();
+        $one->assertJsonCount(1, 'data')->assertJsonPath('summary.general_expenses', 0)
+            ->assertJsonPath('summary.net_profit', $one->json('data.0.profit'));
+
+        $csv = $this->actingAs($this->owner())->get('/api/v1/reports/profit/export?from='.self::FROM.'&to='.self::TO)->streamedContent();
+        $this->assertStringContainsString('LABA BERSIH USAHA', $csv);
+        $this->assertStringContainsString(';'.($income - $sumMaint - $sumCarExp - $general).';', $csv);
+    }
+
     public function test_receivables_include_balance_and_running_late_fee(): void
     {
         // Jadikan satu sewa aktif terlambat 5 jam dengan tagihan lunas.
@@ -173,6 +215,7 @@ class ReportTest extends TestCase
             '/api/v1/reports/payments?from='.self::FROM.'&to='.self::TO.'&per_page=50',
             '/api/v1/reports/revenue-by-car?from='.self::FROM.'&to='.self::TO,
             '/api/v1/reports/utilization?from='.self::FROM.'&to='.self::TO,
+            '/api/v1/reports/profit?from='.self::FROM.'&to='.self::TO,
         ];
         $count = function (string $url) {
             $this->actingAs($this->owner())->getJson($url)->assertOk(); // pemanasan cache auth/permission
@@ -188,13 +231,14 @@ class ReportTest extends TestCase
         $before = array_map($count, $urls);
         // Gandakan data pembayaran: jumlah query harus tetap (agregasi di DB, tanpa N+1).
         RentalPayment::query()->get()->each(fn ($p) => $p->replicate()->save());
+        Expense::query()->get()->each(fn ($e) => $e->replicate()->saveQuietly());
         $this->assertSame($before, array_map($count, $urls));
         $this->assertLessThanOrEqual(10, max($before));
     }
 
     public function test_csv_exports(): void
     {
-        foreach (['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance'] as $type) {
+        foreach (['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance', 'profit'] as $type) {
             $res = $this->actingAs($this->owner())->get("/api/v1/reports/{$type}/export?from=".self::FROM.'&to='.self::TO);
             $res->assertOk()->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
             $this->assertStringContainsString("laporan-{$type}-".self::FROM.'_'.self::TO.'.csv', $res->headers->get('Content-Disposition'));
@@ -210,7 +254,7 @@ class ReportTest extends TestCase
     public function test_only_report_view_permission(): void
     {
         $staff = $this->userWithRole('staff');
-        foreach (['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance'] as $type) {
+        foreach (['payments', 'receivables', 'revenue-by-car', 'utilization', 'maintenance', 'profit'] as $type) {
             $this->actingAs($staff)->getJson("/api/v1/reports/{$type}")->assertForbidden();
             $this->actingAs($staff)->get("/api/v1/reports/{$type}/export")->assertForbidden();
         }

@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 6: + pengaturan, pengguna & role, log aktivitas, matriks izin |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 6: + Pengaturan, Pengguna & Role, Log Aktivitas |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 8: + pengeluaran & laporan laba per mobil |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 8: + Pengeluaran, tab Laba per mobil |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -154,6 +154,7 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
 | GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
 | GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET/POST/PUT/DELETE | `/api/v1/expenses` | `expense.*` | Pengeluaran operasional (multipart, bukti privat). Filter `car_id` (angka atau `umum`), `category`, `from`, `to`, `search`; `meta.summary` per kategori. Ubah dengan bukti: `POST` + `_method=PUT` |
 | GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
 
 | GET | `/api/v1/rentals` | `rental.view` | `view=semua\|booking\|aktif\|terlambat\|selesai\|batal\|belum_lunas`, `search`; `meta.counts` |
@@ -173,7 +174,7 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | GET | `/api/v1/rentals/{id}/invoice/pdf` | `rental.view` | PDF nota (dompdf, A4) |
 | POST | `/api/v1/rentals/{id}/invoice/print-url` | `rental.view` | Signed URL PDF 2 menit untuk tombol Cetak |
 | GET | `/api/v1/dashboard` | `dashboard.view` | Banner dinamis, KPI, arus kas 7 hari, pengembalian prioritas, armada pilihan, transaksi terbaru, pengingat pajak/STNK/servis |
-| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
+| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,profit,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
 | GET | `/api/v1/reports/{type}/export` | `report.view` | CSV (`;`, UTF-8 BOM) |
 | GET/PATCH | `/api/v1/booking-requests[/{id}]` | `booking_request.*` | Status `baru/dihubungi/ditolak`; "Jadikan Sewa" = `POST /rentals` dengan `booking_request_id` |
 
@@ -205,6 +206,12 @@ Laporan (Phase 5):
 - **Agregasi di database:** `SUM`/`COUNT`/`GROUP BY` per hari, metode, dan mobil. Utilisasi menghitung irisan waktu sewa dengan periode di SQL. Index khusus laporan ada di migration `add_report_indexes`.
 - **Pengujian:** test membandingkan setiap angka dengan perhitungan ulang dari baris mentah memakai data `ReportDemoSeeder` (60 hari, deterministik). Jumlah query diuji tetap sama saat data dilipatgandakan.
 - **Kinerja:** di MySQL dengan ~160 ribu pembayaran, laporan pembayaran memakai range scan index `paid_at` dan selesai dalam ±1 ms.
+
+Pengeluaran & laba (Phase 8):
+- **Pengeluaran** punya kategori (BBM, cuci, parkir/tol, asuransi, cicilan, gaji, sewa tempat, listrik/air/internet, pemasaran, lainnya). Bisa untuk satu mobil, atau umum (`car_id` kosong). Biaya servis tetap dicatat di Perawatan.
+- **Bukti/struk** disimpan di disk privat dan hanya bisa dibuka lewat signed URL 10 menit. Mengganti bukti menghapus berkas lama. Hapus pengeluaran = soft delete, dan bukti tetap disimpan untuk audit.
+- **Laba per mobil** = pendapatan diterima − biaya perawatan − pengeluaran mobil itu, dihitung per tanggal (WIB). **Laba bersih usaha** juga dikurangi pengeluaran umum. Saat difilter per mobil, pengeluaran umum tidak ikut.
+- **Hak akses:** staf boleh melihat dan mencatat pengeluaran. Mengubah/menghapus hanya pemilik/admin. Laporan laba butuh `report.view`. Semua perubahan tercatat di Log Aktivitas (modul Pengeluaran).
 
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
@@ -247,7 +254,8 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Nota](docs/screenshots/nota.png) | ![Nota PDF](docs/screenshots/nota-pdf.png) |
 | ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
 | ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
-| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | |
+| ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | ![Pengeluaran](docs/screenshots/pengeluaran.png) |
+| ![Laba per mobil](docs/screenshots/laporan-laba.png) | |
 
 ## Konvensi
 
