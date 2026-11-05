@@ -37,6 +37,7 @@ export const carSchema = z
     description: z.string().trim().max(2000),
     features_text: z.string().max(800),
     notes: z.string().trim().max(2000),
+    owner_id: z.string(),
   })
   .refine((v) => v.rate_with_driver >= v.rate_self_drive, {
     path: ['rate_with_driver'],

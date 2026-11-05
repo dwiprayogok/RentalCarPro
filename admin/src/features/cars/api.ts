@@ -38,7 +38,7 @@ export function useCar(id: number | null) {
 }
 
 export type CarPayload = Omit<Car,
-  'id' | 'name' | 'transmission_label' | 'status_label' | 'cover_photo_url' | 'photos' | 'photos_count' | 'rentals_count' | 'can' | 'slug'
+  'id' | 'name' | 'transmission_label' | 'status_label' | 'cover_photo_url' | 'photos' | 'photos_count' | 'rentals_count' | 'can' | 'slug' | 'owner'
 > & { slug?: string | null }
 
 export function useSaveCar() {

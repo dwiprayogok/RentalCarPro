@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\BookingRequestController;
 use App\Http\Controllers\Api\V1\CarAvailabilityController;
 use App\Http\Controllers\Api\V1\CarController;
+use App\Http\Controllers\Api\V1\CarOwnerController;
 use App\Http\Controllers\Api\V1\CarPhotoController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerDocumentController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\HolidayController;
 use App\Http\Controllers\Api\V1\MaintenanceRecordController;
+use App\Http\Controllers\Api\V1\OwnerSettlementController;
 use App\Http\Controllers\Api\V1\RentalController;
 use App\Http\Controllers\Api\V1\RentalInspectionController;
 use App\Http\Controllers\Api\V1\RentalInvoiceController;
@@ -123,6 +125,17 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         // Pengeluaran operasional
         Route::apiResource('expenses', ExpenseController::class);
+
+        // Mobil titipan & bagi hasil
+        Route::apiResource('car-owners', CarOwnerController::class)->parameters(['car-owners' => 'owner']);
+        Route::get('car-owners/{owner}/settlement-preview', [CarOwnerController::class, 'preview'])->name('car-owners.preview');
+        Route::get('settlements', [OwnerSettlementController::class, 'index'])->name('settlements.index');
+        Route::post('settlements', [OwnerSettlementController::class, 'store'])->name('settlements.store');
+        Route::get('settlements/{settlement}', [OwnerSettlementController::class, 'show'])->name('settlements.show');
+        Route::post('settlements/{settlement}/pay', [OwnerSettlementController::class, 'pay'])->name('settlements.pay');
+        Route::delete('settlements/{settlement}', [OwnerSettlementController::class, 'destroy'])->name('settlements.destroy');
+        Route::get('settlements/{settlement}/pdf', [OwnerSettlementController::class, 'pdf'])->name('settlements.pdf');
+        Route::post('settlements/{settlement}/print-url', [OwnerSettlementController::class, 'printUrl'])->name('settlements.print-url');
     });
 
     // Berkas KTP/SIM: tanpa sesi (dipakai di <img>), tetapi WAJIB signed URL berumur pendek.
@@ -136,6 +149,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('rentals/{rental}/payments/{payment}/proof', [RentalPaymentController::class, 'proof'])
             ->scopeBindings()->name('rentals.payments.proof');
         Route::get('expenses/{expense}/proof', [ExpenseController::class, 'proof'])->name('expenses.proof');
+        Route::get('settlements/{settlement}/shared.pdf', [OwnerSettlementController::class, 'shared'])->name('settlements.shared');
+        Route::get('settlements/{settlement}/proof', [OwnerSettlementController::class, 'proof'])->name('settlements.proof');
         Route::get('rentals/{rental}/invoice/shared.pdf', [RentalInvoiceController::class, 'shared'])->name('rentals.invoice.shared');
         Route::get('rentals/{rental}/inspections/{type}/photos/{index}', [RentalInspectionController::class, 'photo'])
             ->whereIn('type', ['serah_terima', 'kembali'])->whereNumber('index')->name('rentals.inspections.photo');

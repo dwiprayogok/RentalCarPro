@@ -39,6 +39,8 @@ export interface Car {
   brand: string
   model: string
   plate_number: string
+  owner_id: number | null
+  owner: { id: number; name: string; share_label: string } | null
   transmission: 'matic' | 'manual'
   transmission_label: string
   year: number

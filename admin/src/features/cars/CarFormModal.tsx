@@ -12,13 +12,14 @@ import { errorMessage, errorStatus } from '@/lib/api'
 import { applyServerErrors } from '@/lib/form'
 import { P } from '@/lib/permissions'
 import type { Car } from '@/lib/types'
+import { useOwners } from '@/features/owners/api'
 import { useSaveCar, type CarPayload } from './api'
 import { carSchema, type CarFormInput, type CarFormValues } from './schema'
 
 const FIELDS = [
   'brand', 'model', 'plate_number', 'transmission', 'year', 'color', 'seats', 'fuel_type', 'rate_self_drive', 'rate_with_driver',
   'weekend_rate_self_drive', 'weekend_rate_with_driver', 'default_deposit', 'odometer', 'status', 'tax_due_date', 'stnk_due_date',
-  'next_service_date', 'next_service_odometer', 'slug', 'is_published', 'description', 'notes',
+  'next_service_date', 'next_service_odometer', 'slug', 'is_published', 'description', 'notes', 'owner_id',
 ] as const
 
 function toForm(car?: Car | null): CarFormInput {
@@ -47,6 +48,7 @@ function toForm(car?: Car | null): CarFormInput {
     description: car?.description ?? '',
     features_text: (car?.features ?? []).join(', '),
     notes: car?.notes ?? '',
+    owner_id: car?.owner_id ? String(car.owner_id) : '',
   }
 }
 
@@ -78,6 +80,7 @@ function toPayload(v: CarFormValues): CarPayload {
     description: blank(v.description),
     features: v.features_text.split(',').map((f) => f.trim()).filter(Boolean),
     notes: blank(v.notes),
+    owner_id: v.owner_id ? Number(v.owner_id) : null,
   }
 }
 
@@ -88,6 +91,7 @@ export function CarFormModal({ open, car, onClose, onSaved }: { open: boolean; c
   const can = useCan()
   const [formError, setFormError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const owners = useOwners('', '', open && can(P.carOwnerView))
 
   const { register, control, handleSubmit, reset, setError, formState: { errors } } = useForm<CarFormInput, unknown, CarFormValues>({
     resolver: zodResolver(carSchema),
@@ -231,6 +235,17 @@ export function CarFormModal({ open, car, onClose, onSaved }: { open: boolean; c
               </Select>
             )}
           </Field>
+          {can(P.carOwnerView) && (
+            <Field label="Kepemilikan" hint="Pilih pemilik bila mobil ini titipan; pendapatannya masuk setoran bagi hasil." error={errors.owner_id?.message}>
+              {(a) => (
+                <Select {...a} {...register('owner_id')}>
+                  <option value="">Milik rental sendiri</option>
+                  {car?.owner && !(owners.data?.data ?? []).some((o) => o.id === car.owner?.id) && <option value={car.owner.id}>Titipan · {car.owner.name}</option>}
+                  {(owners.data?.data ?? []).filter((o) => o.is_active || o.id === car?.owner_id).map((o) => <option key={o.id} value={o.id}>Titipan · {o.name} ({o.share_label})</option>)}
+                </Select>
+              )}
+            </Field>
+          )}
           <Field label="Jatuh tempo pajak" error={errors.tax_due_date?.message}>
             {(a) => <Input {...a} {...register('tax_due_date')} type="date" />}
           </Field>

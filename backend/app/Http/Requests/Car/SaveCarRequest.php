@@ -58,6 +58,8 @@ class SaveCarRequest extends FormRequest
         $rupiah = ['integer', 'min:0', 'max:1000000000'];
 
         return [
+            // Kosong = milik rental sendiri; diisi = mobil titipan milik pemilik ini.
+            'owner_id' => ['nullable', 'integer', Rule::exists('car_owners', 'id')->whereNull('deleted_at')],
             'brand' => ['required', 'string', 'max:60'],
             'model' => ['required', 'string', 'max:80'],
             // Contoh: B 1234 ABC, F 1576 FGH, D 12 A
@@ -127,6 +129,7 @@ class SaveCarRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'owner_id' => 'pemilik',
             'brand' => 'merk',
             'model' => 'tipe',
             'plate_number' => 'plat nomor',

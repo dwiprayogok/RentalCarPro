@@ -26,6 +26,8 @@ class CarResource extends JsonResource
             'brand' => $this->brand,
             'model' => $this->model,
             'plate_number' => $this->plate_number,
+            'owner_id' => $this->owner_id,
+            'owner' => $this->owner_id ? $this->whenLoaded('owner', fn () => ['id' => $this->owner->id, 'name' => $this->owner->name, 'share_label' => $this->owner->shareLabel()]) : null,
             'transmission' => $this->transmission->value,
             'transmission_label' => $this->transmission->label(),
             'year' => $this->year,

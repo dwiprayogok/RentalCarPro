@@ -196,7 +196,7 @@ function ProfitTab({ f }: { f: ReportFilters }) {
         <Table head={['Mobil', 'Pendapatan', 'Perawatan', 'Pengeluaran', 'Laba', 'Margin']}>
           {q.data.data.map((r: any) => (
             <tr key={r.car_id}>
-              <Td><span className="font-semibold">{r.car}</span><br /><span className="text-2xs text-ink-muted">{r.plate_number}</span></Td>
+              <Td><span className="font-semibold">{r.car}</span><br /><span className="text-2xs text-ink-muted">{r.plate_number}{r.owner && <> · <span className="font-semibold text-amber-700">Titipan {r.owner}</span></>}</span></Td>
               <Td right>{rupiah(r.income)}</Td>
               <Td right>{rupiah(r.maintenance)}</Td>
               <Td right>{rupiah(r.expenses)}</Td>

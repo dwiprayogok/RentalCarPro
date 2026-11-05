@@ -25,6 +25,7 @@ export function CarCard({ car, onDetail }: { car: Car; onDetail: () => void }) {
       <div className="flex flex-1 flex-col p-4">
         <h3 className="truncate text-base font-bold text-ink" title={car.name}>{car.name}</h3>
         <p className="mt-0.5 text-xs font-semibold text-brand-600">{car.plate_number} · {car.year}</p>
+        {car.owner && <p className="mt-1 inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-2xs font-semibold text-amber-800 ring-1 ring-amber-200">Titipan · {car.owner.name}</p>}
 
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
           <li className="flex items-center gap-1"><Settings2 className="size-3.5" /> {car.transmission_label}</li>

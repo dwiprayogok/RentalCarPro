@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, Inbox, KeyRound, LayoutGrid, Receipt, ShieldCheck, Undo2, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, CarFront, FileText, Handshake, Inbox, KeyRound, LayoutGrid, Receipt, ShieldCheck, type LucideIcon, Undo2, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -47,6 +47,15 @@ const SECTIONS: Section[] = [
   ) },
   { id: 'laporan', icon: BarChart3, title: 'Laporan', body: (
     <p>Menu <strong>Laporan Pembayaran</strong> (pemilik & admin) berisi pembayaran masuk per tanggal bayar, piutang, pendapatan per mobil, <strong>laba per mobil</strong>, utilisasi armada, dan biaya servis. Pilih periode, metode, dan mobil, lalu <strong>Ekspor CSV</strong> untuk dibuka di Excel.</p>
+  ) },
+  { id: 'titipan', icon: Handshake, title: 'Mobil titipan & bagi hasil', body: (
+    <ol>
+      <li>Buka <strong>Mobil Titipan</strong> → <strong>Tambah pemilik</strong>. Isi rekening dan ketentuan bagi hasil: <strong>% dari pendapatan kotor</strong> (biaya ditanggung rental) atau <strong>% dari laba bersih</strong> (biaya servis & pengeluaran mobil ikut dikurangkan).</li>
+      <li>Di <strong>Armada</strong> → Edit data → <strong>Kepemilikan</strong>, pilih pemilik untuk mobil yang dititipkan.</li>
+      <li>Setiap periode (misalnya awal bulan), klik <strong>Buat setoran</strong>, cek pratinjau per mobil, lalu simpan. Angka setoran dikunci (snapshot).</li>
+      <li>Setelah transfer, klik <strong>Catat pembayaran</strong> dan lampirkan bukti. Kirim slip ke pemilik dengan tombol <strong>Kirim ke pemilik</strong> (WhatsApp + tautan PDF 7 hari).</li>
+      <li>Setoran yang belum dibayar bisa dibatalkan dan dibuat ulang; yang sudah dibayar tidak bisa diubah.</li>
+    </ol>
   ) },
   { id: 'pengeluaran', icon: Receipt, title: 'Pengeluaran & laba', body: (
     <ul>

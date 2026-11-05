@@ -317,6 +317,7 @@ class ReportService
                 'car_id' => $car->id,
                 'car' => $car->display_name,
                 'plate_number' => $car->plate_number,
+                'owner' => $car->owner_id ? $car->owner?->name : null,
                 'income' => $in,
                 'maintenance' => $maint,
                 'expenses' => $exp,
@@ -349,6 +350,56 @@ class ReportService
             ],
             'cars' => $cars,
         ];
+    }
+
+    /**
+     * Angka keuangan per mobil untuk sekumpulan mobil (dipakai setoran bagi hasil).
+     * Definisi sama persis dengan laporan Laba: pendapatan per tanggal bayar (WIB),
+     * perawatan per tanggal pengerjaan, pengeluaran per tanggal pengeluaran.
+     *
+     * @param  list<int>  $carIds
+     * @return array<int, array{income: int, maintenance: int, expenses: int, rentals: int, billed_days: int}>
+     */
+    public function carFinancials(array $carIds, string $fromDate, string $toDate): array
+    {
+        if ($carIds === []) {
+            return [];
+        }
+        [$from, $to] = $this->range(['from' => $fromDate, 'to' => $toDate]);
+        $income = Sql::incomeExpr('p');
+
+        $revenue = $this->paymentsBase(['from' => $fromDate, 'to' => $toDate])
+            ->whereIn('r.car_id', $carIds)
+            ->selectRaw("r.car_id, SUM({$income}) as income")
+            ->groupBy('r.car_id')->pluck('income', 'car_id');
+
+        $maintenance = DB::table('maintenance_records')->whereNull('deleted_at')
+            ->whereIn('car_id', $carIds)->whereBetween('performed_at', [$fromDate, $toDate])
+            ->selectRaw('car_id, SUM(cost) as total')->groupBy('car_id')->pluck('total', 'car_id');
+
+        $expenses = DB::table('expenses')->whereNull('deleted_at')
+            ->whereIn('car_id', $carIds)->whereBetween('spent_at', [$fromDate, $toDate])
+            ->selectRaw('car_id, SUM(amount) as total')->groupBy('car_id')->pluck('total', 'car_id');
+
+        $rentals = DB::table('rentals')->whereNull('deleted_at')
+            ->whereIn('car_id', $carIds)
+            ->where('status', '!=', RentalStatus::Batal->value)
+            ->whereBetween('start_at', [$from, $to])
+            ->selectRaw('car_id, COUNT(*) as n, SUM(billed_days) as days')
+            ->groupBy('car_id')->get()->keyBy('car_id');
+
+        $out = [];
+        foreach ($carIds as $id) {
+            $out[$id] = [
+                'income' => (int) ($revenue[$id] ?? 0),
+                'maintenance' => (int) ($maintenance[$id] ?? 0),
+                'expenses' => (int) ($expenses[$id] ?? 0),
+                'rentals' => (int) ($rentals[$id]->n ?? 0),
+                'billed_days' => (int) ($rentals[$id]->days ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     public function incomeBetween(Carbon $fromUtc, Carbon $toUtc): int
@@ -406,6 +457,7 @@ class ReportService
         return Car::query()
             ->when($f['car_id'] ?? null, fn ($q, $id) => $q->whereKey($id))
             ->orderBy('brand')->orderBy('model')
-            ->get(['id', 'brand', 'model', 'plate_number', 'status']);
+            ->with('owner:id,name')
+            ->get(['id', 'owner_id', 'brand', 'model', 'plate_number', 'status']);
     }
 }

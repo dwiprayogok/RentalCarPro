@@ -96,6 +96,19 @@ final class Permissions
 
     public const EXPENSE_DELETE = 'expense.delete';
 
+    // Mobil titipan & bagi hasil
+    public const CAR_OWNER_VIEW = 'car_owner.view';
+
+    public const CAR_OWNER_MANAGE = 'car_owner.manage';
+
+    public const SETTLEMENT_VIEW = 'settlement.view';
+
+    public const SETTLEMENT_CREATE = 'settlement.create';
+
+    public const SETTLEMENT_PAY = 'settlement.pay';
+
+    public const SETTLEMENT_DELETE = 'settlement.delete';
+
     // Permintaan booking dari landing
     public const BOOKING_REQUEST_VIEW = 'booking_request.view';
 

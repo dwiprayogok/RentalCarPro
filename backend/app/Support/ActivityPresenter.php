@@ -3,11 +3,14 @@
 namespace App\Support;
 
 use App\Enums\ExpenseCategory;
+use App\Enums\ShareBasis;
 use App\Models\BookingRequest;
 use App\Models\Car;
+use App\Models\CarOwner;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Holiday;
+use App\Models\OwnerSettlement;
 use App\Models\Rental;
 use App\Models\RentalFee;
 use App\Models\RentalPayment;
@@ -25,7 +28,7 @@ final class ActivityPresenter
     public const MODULES = [
         'rental' => 'Transaksi', 'payment' => 'Pembayaran', 'rental_fee' => 'Biaya tambahan', 'customer' => 'Pelanggan',
         'car' => 'Armada', 'booking_request' => 'Permintaan booking', 'setting' => 'Pengaturan', 'user' => 'Pengguna',
-        'expense' => 'Pengeluaran',
+        'expense' => 'Pengeluaran', 'car_owner' => 'Pemilik titipan', 'owner_settlement' => 'Setoran bagi hasil',
     ];
 
     public const EVENTS = [
@@ -50,11 +53,14 @@ final class ActivityPresenter
         'payment_amount' => 'Pembayaran akhir', 'remaining' => 'Sisa tagihan', 'car_status' => 'Status mobil',
         'customer_flagged' => 'Pelanggan ditandai Perhatian', 'customer_id' => 'Pelanggan',
         'category' => 'Kategori', 'title' => 'Keterangan', 'spent_at' => 'Tanggal', 'vendor' => 'Toko/vendor',
+        'owner_id' => 'Pemilik', 'share_basis' => 'Dasar bagi hasil', 'share_percent' => 'Bagian pemilik (%)', 'bank_name' => 'Bank',
+        'bank_account_number' => 'No. rekening', 'bank_account_name' => 'Nama rekening', 'code' => 'Nomor', 'period_from' => 'Periode dari',
+        'period_to' => 'Periode sampai', 'owner_amount' => 'Bagian pemilik', 'paid_method' => 'Metode bayar', 'paid_reference' => 'Referensi bayar',
     ];
 
     private const MONEY = [
         'daily_rate', 'rental_amount', 'late_fee', 'extra_fees_total', 'discount', 'total_amount', 'rate_self_drive', 'rate_with_driver',
-        'weekend_rate_self_drive', 'weekend_rate_with_driver', 'amount', 'deposit_deduction', 'deposit_refund', 'payment_amount', 'remaining',
+        'weekend_rate_self_drive', 'weekend_rate_with_driver', 'amount', 'owner_amount', 'deposit_deduction', 'deposit_refund', 'payment_amount', 'remaining',
     ];
 
     /** @return array<string, mixed> */
@@ -88,6 +94,8 @@ final class ActivityPresenter
             $s instanceof RentalFee => ['type' => 'fee', 'id' => $id, 'label' => "{$s->type->label()} · ".($s->rental?->code ?? ''), 'link' => null],
             $s instanceof Customer => ['type' => 'customer', 'id' => $id, 'label' => $s->name, 'link' => "/pelanggan?q={$s->phone}"],
             $s instanceof Car => ['type' => 'car', 'id' => $id, 'label' => "{$s->display_name} · {$s->plate_number}", 'link' => '/armada?q='.urlencode($s->plate_number)],
+            $s instanceof CarOwner => ['type' => 'car_owner', 'id' => $id, 'label' => "Pemilik {$s->name}", 'link' => '/mobil-titipan'],
+            $s instanceof OwnerSettlement => ['type' => 'owner_settlement', 'id' => $id, 'label' => "Setoran {$s->code}", 'link' => '/mobil-titipan?tab=setoran'],
             $s instanceof Expense => ['type' => 'expense', 'id' => $id, 'label' => "{$s->category->label()} · {$s->title}", 'link' => '/pengeluaran'],
             $s instanceof Setting => ['type' => 'setting', 'id' => $id, 'label' => $s->label, 'link' => '/pengaturan'],
             $s instanceof Holiday => ['type' => 'holiday', 'id' => $id, 'label' => "Hari libur {$s->date->toDateString()}", 'link' => '/pengaturan'],
@@ -157,6 +165,9 @@ final class ActivityPresenter
         if (in_array($field, self::MONEY, true) && is_numeric($v)) {
             return 'Rp '.number_format((int) $v, 0, ',', '.');
         }
+        if ($field === 'share_basis' && is_string($v) && ($b = ShareBasis::tryFrom($v))) {
+            return $b->label();
+        }
         if (in_array($field, ['start_at', 'planned_end_at', 'returned_at', 'paid_at'], true) && is_string($v)) {
             try {
                 return Carbon::parse($v)->setTimezone(config('app.display_timezone'))->locale('id')->translatedFormat('j M Y H.i').' WIB';
@@ -167,7 +178,7 @@ final class ActivityPresenter
         if ($field === 'category' && is_string($v) && ($c = ExpenseCategory::tryFrom($v))) {
             return $c->label();
         }
-        if ($field === 'spent_at' && is_string($v)) {
+        if (in_array($field, ['spent_at', 'period_from', 'period_to'], true) && is_string($v)) {
             try {
                 return Carbon::parse(substr($v, 0, 10))->locale('id')->translatedFormat('j M Y');
             } catch (\Throwable) {

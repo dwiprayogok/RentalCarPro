@@ -146,6 +146,7 @@ export function CarDetailModal({ carId, onClose, onEdit }: { carId: number | nul
           <div className="grid gap-6 md:grid-cols-[1.1fr_1fr]">
             <Gallery car={car} />
             <dl className="grid grid-cols-2 content-start gap-x-4 gap-y-4">
+              <Info label="Kepemilikan">{car.owner ? <>Titipan · {car.owner.name}<span className="block text-xs font-normal text-ink-muted">Bagi hasil {car.owner.share_label}</span></> : 'Milik rental sendiri'}</Info>
               <Info label="Tarif lepas kunci">{rupiah(car.rate_self_drive)} / hari</Info>
               <Info label="Tarif dengan driver">{rupiah(car.rate_with_driver)} / hari</Info>
               {(car.weekend_rate_self_drive || car.weekend_rate_with_driver) && (

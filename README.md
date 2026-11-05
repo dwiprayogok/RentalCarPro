@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 8: + pengeluaran & laporan laba per mobil |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 8: + Pengeluaran, tab Laba per mobil |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 9: + mobil titipan & setoran bagi hasil |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 9: + Mobil Titipan (pemilik, setoran, slip PDF) |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -154,6 +154,12 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
 | GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
 | GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET/POST/PUT/DELETE | `/api/v1/car-owners` | `car_owner.*` | Pemilik mobil titipan + ketentuan bagi hasil (`share_basis` kotor/bersih, `share_percent`). Mobil dihubungkan lewat `cars.owner_id` |
+| GET | `/api/v1/car-owners/{owner}/settlement-preview?from=&to=` | `settlement.create` | Pratinjau bagi hasil per mobil (tidak disimpan) |
+| GET/POST | `/api/v1/settlements` | `settlement.view` / `.create` | Setoran per periode (snapshot, nomor `SET-YYYY-NNNN`); `meta.unpaid` |
+| POST | `/api/v1/settlements/{id}/pay` | `settlement.pay` | Catat pembayaran ke pemilik (multipart, bukti privat) |
+| DELETE | `/api/v1/settlements/{id}` | `settlement.delete` | Batalkan setoran yang belum dibayar |
+| GET/POST | `/api/v1/settlements/{id}/pdf`, `/print-url` | `settlement.view` | Slip PDF; link WhatsApp ke pemilik (PDF signed 7 hari) |
 | GET/POST/PUT/DELETE | `/api/v1/expenses` | `expense.*` | Pengeluaran operasional (multipart, bukti privat). Filter `car_id` (angka atau `umum`), `category`, `from`, `to`, `search`; `meta.summary` per kategori. Ubah dengan bukti: `POST` + `_method=PUT` |
 | GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
 
@@ -213,6 +219,13 @@ Pengeluaran & laba (Phase 8):
 - **Laba per mobil** = pendapatan diterima − biaya perawatan − pengeluaran mobil itu, dihitung per tanggal (WIB). **Laba bersih usaha** juga dikurangi pengeluaran umum. Saat difilter per mobil, pengeluaran umum tidak ikut.
 - **Hak akses:** staf boleh melihat dan mencatat pengeluaran. Mengubah/menghapus hanya pemilik/admin. Laporan laba butuh `report.view`. Semua perubahan tercatat di Log Aktivitas (modul Pengeluaran).
 
+Mobil titipan & bagi hasil (Phase 9):
+- **Pemilik** punya ketentuan sendiri: **% dari pendapatan kotor** (biaya servis & pengeluaran ditanggung rental) atau **% dari laba bersih** (pendapatan − perawatan − pengeluaran mobil itu). Definisi angkanya sama dengan laporan Laba.
+- **Setoran** dibuat per periode, dan angkanya di-*snapshot* (`lines` per mobil). Data yang berubah belakangan tidak mengubah setoran. Periode satu pemilik tidak boleh tumpang tindih (baris pemilik dikunci saat membuat setoran).
+- **Pembulatan:** bagian pemilik = round(dasar × persen). Bila dasar negatif (rugi), bagian pemilik Rp 0 dan kerugian tidak dibawa ke periode berikutnya.
+- **Setoran yang sudah dibayar** tidak bisa dibayar ulang atau dibatalkan, termasuk oleh owner. Aturan ini ditegakkan di service, karena owner lolos semua policy lewat `Gate::before`.
+- **Hak akses:** pemilik & admin. Staf tidak punya akses. Pembuatan, pembayaran, dan pembatalan tercatat di Log Aktivitas.
+
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
 
@@ -255,7 +268,8 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
 | ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
 | ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | ![Pengeluaran](docs/screenshots/pengeluaran.png) |
-| ![Laba per mobil](docs/screenshots/laporan-laba.png) | |
+| ![Laba per mobil](docs/screenshots/laporan-laba.png) | ![Mobil Titipan](docs/screenshots/mobil-titipan.png) |
+| ![Pratinjau setoran](docs/screenshots/setoran-pratinjau.png) | ![Detail setoran](docs/screenshots/setoran-detail.png) |
 
 ## Konvensi
 
