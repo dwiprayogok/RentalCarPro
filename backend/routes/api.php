@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\HolidayController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MaintenanceRecordController;
 use App\Http\Controllers\Api\V1\OwnerSettlementController;
 use App\Http\Controllers\Api\V1\RentalController;
@@ -125,6 +126,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
         // Pengeluaran operasional
         Route::apiResource('expenses', ExpenseController::class);
+
+        // Import data massal (Excel/CSV)
+        Route::prefix('imports/{type}')->whereIn('type', ['armada', 'pelanggan', 'driver'])->name('imports.')->group(function () {
+            Route::get('template', [ImportController::class, 'template'])->name('template');
+            Route::post('preview', [ImportController::class, 'preview'])->middleware('throttle:20,1')->name('preview');
+            Route::post('commit', [ImportController::class, 'commit'])->name('commit');
+        });
 
         // Mobil titipan & bagi hasil
         Route::apiResource('car-owners', CarOwnerController::class)->parameters(['car-owners' => 'owner']);

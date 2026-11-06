@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 9: + mobil titipan & setoran bagi hasil |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 9: + Mobil Titipan (pemilik, setoran, slip PDF) |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1`, MySQL 8 | Phase 10: + import Excel/CSV (armada, pelanggan, driver) |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 10: + Import Data (template, pratinjau per baris) |
 | `landing/` | Landing page publik (Next.js) | Ditunda |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -154,6 +154,9 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
 | GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
 | GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET | `/api/v1/imports/{armada,pelanggan,driver}/template` | `data.import` + izin tambah | Template `.xlsx` (sheet Data dengan dropdown + sheet Petunjuk) |
+| POST | `/api/v1/imports/{type}/preview` | `data.import` + izin tambah | Unggah `.xlsx/.xls/.csv` (maks. 5 MB, 1.000 baris), hasil per baris: `baru` / `lewati` / `error` + token 30 menit |
+| POST | `/api/v1/imports/{type}/commit` | `data.import` + izin tambah | Simpan baris valid (validasi ulang) dalam satu transaksi |
 | GET/POST/PUT/DELETE | `/api/v1/car-owners` | `car_owner.*` | Pemilik mobil titipan + ketentuan bagi hasil (`share_basis` kotor/bersih, `share_percent`). Mobil dihubungkan lewat `cars.owner_id` |
 | GET | `/api/v1/car-owners/{owner}/settlement-preview?from=&to=` | `settlement.create` | Pratinjau bagi hasil per mobil (tidak disimpan) |
 | GET/POST | `/api/v1/settlements` | `settlement.view` / `.create` | Setoran per periode (snapshot, nomor `SET-YYYY-NNNN`); `meta.unpaid` |
@@ -226,6 +229,18 @@ Mobil titipan & bagi hasil (Phase 9):
 - **Setoran yang sudah dibayar** tidak bisa dibayar ulang atau dibatalkan, termasuk oleh owner. Aturan ini ditegakkan di service, karena owner lolos semua policy lewat `Gate::before`.
 - **Hak akses:** pemilik & admin. Staf tidak punya akses. Pembuatan, pembayaran, dan pembatalan tercatat di Log Aktivitas.
 
+Import Excel (Phase 10):
+- **Validasi sama dengan form biasa:** setiap baris dijalankan lewat FormRequest yang sama (`SaveCarRequest`, `SaveCustomerRequest`, `SaveDriverRequest`), termasuk normalisasi dan pesan Bahasa Indonesia. Penyimpanan lewat service yang sama, jadi NIK tetap terenkripsi dan slug serta log aktivitas tetap jalan.
+- **Konversi sel:**
+  - tanggal Excel atau `dd/mm/yyyy`;
+  - nominal notasi Indonesia (`Rp 1.250.000`, `500.000` = lima ratus ribu);
+  - pilihan berdasarkan label (`Matic`, `Ya/Tidak`);
+  - HP tanpa angka 0 di depan.
+  NIK yang terbaca sebagai angka ditolak, karena Excel hanya menyimpan 15 digit.
+- **Data yang sudah ada dilewati, tidak ditimpa:** plat (armada), NIK/HP (pelanggan), HP (driver). Baris ganda dalam satu file ditandai.
+- **Pratinjau** disimpan di cache 30 menit dengan token yang terikat ke pengguna dan jenis data. Saat commit, setiap baris divalidasi ulang. NIK lengkap tidak pernah dikirim di pratinjau.
+- **Hak akses:** permission `data.import` (pemilik & admin) plus izin tambah jenis datanya. Setiap import tercatat di Log Aktivitas (modul Import data).
+
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
 
@@ -270,6 +285,7 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | ![Pengeluaran](docs/screenshots/pengeluaran.png) |
 | ![Laba per mobil](docs/screenshots/laporan-laba.png) | ![Mobil Titipan](docs/screenshots/mobil-titipan.png) |
 | ![Pratinjau setoran](docs/screenshots/setoran-pratinjau.png) | ![Detail setoran](docs/screenshots/setoran-detail.png) |
+| ![Pratinjau import](docs/screenshots/import-pratinjau.png) | ![Hasil import](docs/screenshots/import-hasil.png) |
 
 ## Konvensi
 

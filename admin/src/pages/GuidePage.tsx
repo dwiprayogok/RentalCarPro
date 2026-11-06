@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, Handshake, Inbox, KeyRound, LayoutGrid, Receipt, ShieldCheck, type LucideIcon, Undo2, Users } from 'lucide-react'
+import { BarChart3, CarFront, FileSpreadsheet, FileText, Handshake, Inbox, KeyRound, LayoutGrid, Receipt, ShieldCheck, type LucideIcon, Undo2, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -47,6 +47,14 @@ const SECTIONS: Section[] = [
   ) },
   { id: 'laporan', icon: BarChart3, title: 'Laporan', body: (
     <p>Menu <strong>Laporan Pembayaran</strong> (pemilik & admin) berisi pembayaran masuk per tanggal bayar, piutang, pendapatan per mobil, <strong>laba per mobil</strong>, utilisasi armada, dan biaya servis. Pilih periode, metode, dan mobil, lalu <strong>Ekspor CSV</strong> untuk dibuka di Excel.</p>
+  ) },
+  { id: 'import', icon: FileSpreadsheet, title: 'Import data dari Excel', body: (
+    <ol>
+      <li>Buka <strong>Import Data</strong> (atau tombol <strong>Import Excel</strong> di Armada/Pelanggan), pilih jenis data, lalu <strong>Unduh template</strong>.</li>
+      <li>Isi sheet <strong>Data</strong> mulai baris 2. Kolom hijau tua wajib. Tanggal dd/mm/yyyy; nominal boleh "450000" atau "Rp 450.000". Kolom HP & NIK sudah berformat Teks agar angka 0 dan 16 digit NIK tidak berubah.</li>
+      <li>Unggah file. Setiap baris diperiksa dengan aturan yang sama seperti form biasa: <strong>Siap diimpor</strong>, <strong>Dilewati</strong> (sudah ada: plat/NIK/HP sama), atau <strong>Bermasalah</strong> (dengan alasannya).</li>
+      <li>Klik <strong>Import</strong>. Hanya baris yang siap yang disimpan, sekaligus. Data lama tidak pernah ditimpa, dan semuanya tercatat di Log Aktivitas.</li>
+    </ol>
   ) },
   { id: 'titipan', icon: Handshake, title: 'Mobil titipan & bagi hasil', body: (
     <ol>

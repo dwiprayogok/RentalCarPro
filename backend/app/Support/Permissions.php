@@ -109,6 +109,9 @@ final class Permissions
 
     public const SETTLEMENT_DELETE = 'settlement.delete';
 
+    // Import data massal dari Excel/CSV (ditambah izin tambah per jenis data)
+    public const DATA_IMPORT = 'data.import';
+
     // Permintaan booking dari landing
     public const BOOKING_REQUEST_VIEW = 'booking_request.view';
 

@@ -9,6 +9,8 @@ export const P = {
   rentalOverrideBlacklist: 'rental.override_blacklist',
   paymentCreate: 'payment.create',
   paymentDelete: 'payment.delete',
+  dataImport: 'data.import',
+  driverCreate: 'driver.create',
   carView: 'car.view',
   carCreate: 'car.create',
   carUpdate: 'car.update',

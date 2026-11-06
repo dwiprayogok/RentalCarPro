@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, Handshake, HelpCircle, History, Inbox, LayoutGrid, Receipt, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, CarFront, FileSpreadsheet, FileText, Handshake, HelpCircle, History, Inbox, LayoutGrid, Receipt, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
 import { P } from '@/lib/permissions'
 
 export interface NavItem {
@@ -27,6 +27,7 @@ export const insightNav: NavItem[] = [
 export const systemNav: NavItem[] = [
   { to: '/pengaturan', label: 'Pengaturan', icon: Settings, anyOf: [P.settingUpdate] },
   { to: '/pengguna', label: 'Pengguna & Role', icon: UserCog, anyOf: [P.userManage] },
+  { to: '/import-data', label: 'Import Data', icon: FileSpreadsheet, anyOf: [P.dataImport] },
   { to: '/log-aktivitas', label: 'Log Aktivitas', icon: History, anyOf: [P.activityView] },
 ]
 

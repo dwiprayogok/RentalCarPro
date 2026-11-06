@@ -28,14 +28,14 @@ final class ActivityPresenter
     public const MODULES = [
         'rental' => 'Transaksi', 'payment' => 'Pembayaran', 'rental_fee' => 'Biaya tambahan', 'customer' => 'Pelanggan',
         'car' => 'Armada', 'booking_request' => 'Permintaan booking', 'setting' => 'Pengaturan', 'user' => 'Pengguna',
-        'expense' => 'Pengeluaran', 'car_owner' => 'Pemilik titipan', 'owner_settlement' => 'Setoran bagi hasil',
+        'expense' => 'Pengeluaran', 'car_owner' => 'Pemilik titipan', 'owner_settlement' => 'Setoran bagi hasil', 'import' => 'Import data',
     ];
 
     public const EVENTS = [
         'created' => 'Membuat', 'updated' => 'Mengubah', 'deleted' => 'Menghapus', 'restored' => 'Memulihkan',
         'returned' => 'Menyelesaikan (Kembali)', 'blacklist_override' => 'Pengecualian blacklist',
         'document_uploaded' => 'Unggah dokumen', 'document_deleted' => 'Hapus dokumen', 'role_changed' => 'Ubah role',
-        'password_reset_forced' => 'Paksa reset kata sandi', 'status_changed' => 'Ubah status',
+        'password_reset_forced' => 'Paksa reset kata sandi', 'status_changed' => 'Ubah status', 'imported' => 'Import',
     ];
 
     private const FIELDS = [
@@ -53,6 +53,7 @@ final class ActivityPresenter
         'payment_amount' => 'Pembayaran akhir', 'remaining' => 'Sisa tagihan', 'car_status' => 'Status mobil',
         'customer_flagged' => 'Pelanggan ditandai Perhatian', 'customer_id' => 'Pelanggan',
         'category' => 'Kategori', 'title' => 'Keterangan', 'spent_at' => 'Tanggal', 'vendor' => 'Toko/vendor',
+        'file' => 'File', 'created' => 'Berhasil diimpor', 'skipped' => 'Dilewati',
         'owner_id' => 'Pemilik', 'share_basis' => 'Dasar bagi hasil', 'share_percent' => 'Bagian pemilik (%)', 'bank_name' => 'Bank',
         'bank_account_number' => 'No. rekening', 'bank_account_name' => 'Nama rekening', 'code' => 'Nomor', 'period_from' => 'Periode dari',
         'period_to' => 'Periode sampai', 'owner_amount' => 'Bagian pemilik', 'paid_method' => 'Metode bayar', 'paid_reference' => 'Referensi bayar',
@@ -101,6 +102,7 @@ final class ActivityPresenter
             $s instanceof Holiday => ['type' => 'holiday', 'id' => $id, 'label' => "Hari libur {$s->date->toDateString()}", 'link' => '/pengaturan'],
             $s instanceof User => ['type' => 'user', 'id' => $id, 'label' => "{$s->name} ({$s->email})", 'link' => '/pengguna'],
             $s instanceof BookingRequest => ['type' => 'booking_request', 'id' => $id, 'label' => "Permintaan {$s->name}", 'link' => '/permintaan-booking'],
+            $a->log_name === 'import' => ['type' => 'import', 'id' => null, 'label' => $a->description, 'link' => '/import-data'],
             $a->subject_type !== null => ['type' => class_basename($a->subject_type), 'id' => $id, 'label' => class_basename($a->subject_type)." #{$id} (terhapus)", 'link' => null],
             default => null,
         };

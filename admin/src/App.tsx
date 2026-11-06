@@ -9,6 +9,7 @@ import { BookingRequestsPage } from '@/features/booking-requests/BookingRequests
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { ExpensesPage } from '@/features/expenses/ExpensesPage'
 import { OwnersPage } from '@/features/owners/OwnersPage'
+import { ImportPage } from '@/features/imports/ImportPage'
 import { GuidePage } from '@/pages/GuidePage'
 import { ActivityLogPage } from '@/features/admin/ActivityLogPage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           { path: 'panduan', element: <GuidePage /> },
           { path: 'pengaturan', element: <RequirePermission anyOf={[P.settingUpdate]}><SettingsPage /></RequirePermission> },
           { path: 'pengguna', element: <RequirePermission anyOf={[P.userManage]}><UsersPage /></RequirePermission> },
+          { path: 'import-data', element: <RequirePermission anyOf={[P.dataImport]}><ImportPage /></RequirePermission> },
           { path: 'log-aktivitas', element: <RequirePermission anyOf={[P.activityView]}><ActivityLogPage /></RequirePermission> },
           { path: '*', element: <NotFoundPage /> },
         ],

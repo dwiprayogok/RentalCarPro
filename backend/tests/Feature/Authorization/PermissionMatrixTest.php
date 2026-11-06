@@ -57,6 +57,7 @@ class PermissionMatrixTest extends TestCase
             'request' => BookingRequest::create(['name' => 'Uji', 'phone' => '+6281200000099', 'start_at' => now()->addDays(3), 'end_at' => now()->addDays(4), 'service_type' => 'lepas_kunci'])->id,
             'holiday' => Holiday::create(['date' => '2026-12-25', 'name' => 'Natal'])->id,
             'expense' => Expense::factory()->create()->id,
+            'type' => 'pelanggan',
             'carowner' => ($co = CarOwner::factory()->create())->id,
             'settlement' => OwnerSettlement::create([
                 'code' => 'SET-2026-9999', 'owner_id' => $co->id, 'period_from' => '2026-09-01', 'period_to' => '2026-09-30', 'share_basis' => 'kotor',
@@ -167,6 +168,10 @@ class PermissionMatrixTest extends TestCase
             'setoran bayar' => ['POST', '/api/v1/settlements/{settlement}/pay', self::MANAGERS],
             'setoran batal' => ['DELETE', '/api/v1/settlements/{settlement}', self::MANAGERS],
             'pemilik titipan hapus' => ['DELETE', '/api/v1/car-owners/{carowner}', self::MANAGERS],
+
+            'import template' => ['GET', '/api/v1/imports/{type}/template', self::MANAGERS],
+            'import pratinjau' => ['POST', '/api/v1/imports/{type}/preview', self::MANAGERS],
+            'import simpan' => ['POST', '/api/v1/imports/{type}/commit', self::MANAGERS],
 
             'auth logout' => ['POST', '/api/v1/auth/logout', [...self::ALL, 'none']],
         ];
