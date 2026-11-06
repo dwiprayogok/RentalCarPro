@@ -104,7 +104,9 @@ class SettingService
             'string' => $value === null || is_scalar($value)
                 ? trim((string) $value)
                 : throw $error('Harus berupa teks.'),
-            default => is_array($value) ? array_values(array_map('intval', array_unique($value))) : throw $error('Harus berupa daftar.'),
+            default => is_array($value)
+                ? ($key === 'weekend_days' ? array_values(array_map('intval', array_unique($value))) : array_values($value))
+                : throw $error('Harus berupa daftar.'),
         };
     }
 }

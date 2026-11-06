@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', env('FRONTEND_URL', 'http://localhost:5173'))))),
+    // Admin Web (FRONTEND_URL) + landing page (LANDING_URL, untuk form & cek ketersediaan dari browser).
+    'allowed_origins' => array_values(array_unique(array_filter(array_map('trim', array_merge(
+        explode(',', env('CORS_ALLOWED_ORIGINS', env('FRONTEND_URL', 'http://localhost:5173'))),
+        [env('LANDING_URL', 'http://localhost:3000')],
+    ))))),
 
     'allowed_origins_patterns' => [],
 

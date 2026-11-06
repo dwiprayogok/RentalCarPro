@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Landing page (Next.js). Webhook revalidate ISR dipanggil saat data publik berubah.
+    'landing' => [
+        'url' => env('LANDING_URL', 'http://localhost:3000'),
+        'revalidate_url' => env('LANDING_REVALIDATE_URL'),
+        'revalidate_secret' => env('LANDING_REVALIDATE_SECRET'),
+    ],
+
 ];
