@@ -5,10 +5,12 @@ namespace Database\Seeders;
 use App\Enums\CarStatus;
 use App\Enums\RiskStatus;
 use App\Models\Car;
+use App\Models\CarOwner;
 use App\Models\Customer;
 use App\Models\Driver;
 use App\Models\Rental;
 use App\Models\User;
+use App\Services\Owner\SettlementService;
 use App\Services\Rental\RentalService;
 use Illuminate\Database\Seeder;
 
@@ -76,6 +78,40 @@ class DemoDataSeeder extends Seeder
         // Riwayat 60 hari (laporan & dashboard), lalu dua transaksi yang sedang berjalan.
         $this->call(ReportDemoSeeder::class);
         $this->seedRentals($driver);
+        $this->seedOwners();
+    }
+
+    /** Dua pemilik titipan fiktif + setoran bulan lalu (satu sudah dibayar, satu belum). */
+    private function seedOwners(): void
+    {
+        $owner = User::query()->where('email', 'owner@rentalpro.test')->first() ?? User::query()->first();
+        if (! $owner) {
+            return;
+        }
+        $hendra = CarOwner::query()->updateOrCreate(['phone' => '+6281277778888'], [
+            'name' => 'Hendra Wijaya', 'address' => 'Jl. Contoh No. 1, Bogor', 'bank_name' => 'BCA', 'bank_account_number' => '1234567890',
+            'bank_account_name' => 'Hendra Wijaya', 'share_basis' => 'bersih', 'share_percent' => 60, 'is_active' => true,
+            'notes' => 'Data contoh. Biaya servis & pengeluaran mobil ikut dihitung.', 'created_by' => $owner->id,
+        ]);
+        $siti = CarOwner::query()->updateOrCreate(['phone' => '+6285711112222'], [
+            'name' => 'Siti Rahmawati', 'bank_name' => 'Mandiri', 'bank_account_number' => '9876543210', 'bank_account_name' => 'Siti Rahmawati',
+            'share_basis' => 'kotor', 'share_percent' => 70, 'is_active' => true, 'created_by' => $owner->id,
+        ]);
+        Car::query()->where('plate_number', 'F 1234 RTY')->update(['owner_id' => $hendra->id]);
+        Car::query()->where('plate_number', 'F 1888 KLM')->update(['owner_id' => $siti->id]);
+
+        $tz = config('app.display_timezone');
+        $from = now($tz)->subMonthNoOverflow()->startOfMonth()->toDateString();
+        $to = now($tz)->subMonthNoOverflow()->endOfMonth()->toDateString();
+        $service = app(SettlementService::class);
+        foreach ([$hendra, $siti] as $o) {
+            if (! $o->settlements()->exists()) {
+                $s = $service->create($o, $from, $to, $owner, 'Data contoh');
+                if ($o->is($hendra)) {
+                    $service->pay($s, ['method' => 'transfer', 'reference' => 'DEMO-BH-001', 'paid_at' => now($tz)->subDay()->setTime(10, 0)->format('Y-m-d\\TH:i')], $owner);
+                }
+            }
+        }
     }
 
     private function seedRentals(Driver $driver): void

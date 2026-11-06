@@ -11,6 +11,8 @@ users ─┬─< rentals (created_by, updated_by, blacklist_override_by)
 cars ──┬─< car_photos
        ├─< rentals >── customers
        ├─< maintenance_records
+       ├─< expenses (car_id NULL = pengeluaran umum)
+       └─> car_owners (owner_id NULL = milik sendiri) ─< owner_settlements
        └─< booking_requests
 
 rentals ─┬─< rental_payments
@@ -37,6 +39,9 @@ rentals ─┬─< rental_payments
 | `rental_inspections` | `type` (`serah_terima/kembali`), `odometer`, `fuel_level` (0-100%), `checklist` (JSON), `photos` (JSON, privat) | Unik per `(rental_id, type)`. |
 | `rental_fees` | `type` (`bbm/kebersihan/kelebihan_km/kerusakan/lainnya`), `amount`, `reason` (wajib) | Biaya tambahan; jumlahnya disalin ke `rentals.extra_fees_total`. |
 | `maintenance_records` | `car_id`, `rental_id` (opsional), `type`, `performed_at`, `odometer`, `cost`, `next_due_date`, `next_due_odometer` | Riwayat servis, pajak, STNK; sumber pengingat dashboard dan laporan biaya servis. |
+| `expenses` | `car_id` (opsional), `category`, `title`, `spent_at` (tanggal WIB), `amount`, `method`, `vendor`, `proof_path` (disk privat), `created_by` | Pengeluaran operasional; sumber laporan Laba per mobil. Soft delete, tercatat di activity log. |
+| `car_owners` | `name`, `phone`, rekening (`bank_name`, `bank_account_number`, `bank_account_name`), `share_basis` (`kotor`/`bersih`), `share_percent`, `is_active` | Pemilik mobil titipan. `cars.owner_id` menunjuk ke sini. |
+| `owner_settlements` | `code` (`SET-YYYY-NNNN`), `owner_id`, `period_from/to`, snapshot `share_*`, `income`, `maintenance`, `expenses`, `base_amount`, `owner_amount`, `business_amount`, `lines` (JSON per mobil), `paid_at`, `paid_method`, `paid_proof_path` | Setoran bagi hasil per periode. Soft delete hanya untuk yang belum dibayar. |
 | `booking_requests` | `name`, `phone`, `car_id`, `start_at`, `end_at`, `service_type`, `status` (`baru/dihubungi/dikonfirmasi/ditolak`), `ip_address` | Dari form landing. Konversi ke sewa: `rentals.booking_request_id`. |
 | `activity_log` | `log_name`, `subject`, `causer`, `properties` | Spatie activitylog: perubahan denda, diskon, harga sewa, status risiko, pengaturan, pembayaran. NIK tidak pernah dicatat. |
 

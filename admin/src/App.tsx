@@ -7,6 +7,9 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { RentalsPage } from '@/features/rentals/RentalsPage'
 import { BookingRequestsPage } from '@/features/booking-requests/BookingRequestsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
+import { ExpensesPage } from '@/features/expenses/ExpensesPage'
+import { OwnersPage } from '@/features/owners/OwnersPage'
+import { ImportPage } from '@/features/imports/ImportPage'
 import { GuidePage } from '@/pages/GuidePage'
 import { ActivityLogPage } from '@/features/admin/ActivityLogPage'
 import { LandingSettingsPage } from '@/features/admin/LandingSettingsPage'
@@ -37,13 +40,16 @@ const router = createBrowserRouter([
           { index: true, element: <RequirePermission anyOf={[P.dashboardView]}><DashboardPage /></RequirePermission> },
           { path: 'transaksi', element: <RequirePermission anyOf={[P.rentalView]}><RentalsPage /></RequirePermission> },
           { path: 'armada', element: <RequirePermission anyOf={[P.carView]}><CarsPage /></RequirePermission> },
+          { path: 'mobil-titipan', element: <RequirePermission anyOf={[P.carOwnerView, P.settlementView]}><OwnersPage /></RequirePermission> },
           { path: 'pelanggan', element: <RequirePermission anyOf={[P.customerView]}><CustomersPage /></RequirePermission> },
           { path: 'permintaan-booking', element: <RequirePermission anyOf={[P.bookingRequestView]}><BookingRequestsPage /></RequirePermission> },
+          { path: 'pengeluaran', element: <RequirePermission anyOf={[P.expenseView]}><ExpensesPage /></RequirePermission> },
           { path: 'laporan', element: <RequirePermission anyOf={[P.reportView]}><ReportsPage /></RequirePermission> },
           { path: 'panduan', element: <GuidePage /> },
           { path: 'pengaturan', element: <RequirePermission anyOf={[P.settingUpdate]}><SettingsPage /></RequirePermission> },
           { path: 'pengaturan-landing', element: <RequirePermission anyOf={[P.landingManage]}><LandingSettingsPage /></RequirePermission> },
           { path: 'pengguna', element: <RequirePermission anyOf={[P.userManage]}><UsersPage /></RequirePermission> },
+          { path: 'import-data', element: <RequirePermission anyOf={[P.dataImport]}><ImportPage /></RequirePermission> },
           { path: 'log-aktivitas', element: <RequirePermission anyOf={[P.activityView]}><ActivityLogPage /></RequirePermission> },
           { path: '*', element: <NotFoundPage /> },
         ],

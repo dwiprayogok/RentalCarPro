@@ -5,10 +5,13 @@ namespace Tests\Feature\Authorization;
 use App\Enums\RentalStatus;
 use App\Models\BookingRequest;
 use App\Models\Car;
+use App\Models\CarOwner;
 use App\Models\Customer;
 use App\Models\Driver;
+use App\Models\Expense;
 use App\Models\Holiday;
 use App\Models\MaintenanceRecord;
+use App\Models\OwnerSettlement;
 use App\Models\Rental;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -53,6 +56,13 @@ class PermissionMatrixTest extends TestCase
             'payment' => $payment->id, 'driver' => Driver::factory()->create()->id, 'maintenance' => MaintenanceRecord::factory()->create()->id,
             'request' => BookingRequest::create(['name' => 'Uji', 'phone' => '+6281200000099', 'start_at' => now()->addDays(3), 'end_at' => now()->addDays(4), 'service_type' => 'lepas_kunci'])->id,
             'holiday' => Holiday::create(['date' => '2026-12-25', 'name' => 'Natal'])->id,
+            'expense' => Expense::factory()->create()->id,
+            'type' => 'pelanggan',
+            'carowner' => ($co = CarOwner::factory()->create())->id,
+            'settlement' => OwnerSettlement::create([
+                'code' => 'SET-2026-9999', 'owner_id' => $co->id, 'period_from' => '2026-09-01', 'period_to' => '2026-09-30', 'share_basis' => 'kotor',
+                'share_percent' => 70, 'income' => 0, 'maintenance' => 0, 'expenses' => 0, 'base_amount' => 0, 'owner_amount' => 0, 'business_amount' => 0, 'lines' => [],
+            ])->id,
             'user' => User::factory()->withRole('staff')->create()->id,
         ];
     }
@@ -124,6 +134,7 @@ class PermissionMatrixTest extends TestCase
             'laporan pendapatan' => ['GET', '/api/v1/reports/revenue-by-car', self::MANAGERS],
             'laporan utilisasi' => ['GET', '/api/v1/reports/utilization', self::MANAGERS],
             'laporan servis' => ['GET', '/api/v1/reports/maintenance', self::MANAGERS],
+            'laporan laba' => ['GET', '/api/v1/reports/profit', self::MANAGERS],
             'laporan csv' => ['GET', '/api/v1/reports/payments/export', self::MANAGERS],
 
             'driver daftar' => ['GET', '/api/v1/drivers', self::ALL],
@@ -137,6 +148,30 @@ class PermissionMatrixTest extends TestCase
             'perawatan tambah' => ['POST', '/api/v1/maintenance', self::MANAGERS],
             'perawatan ubah' => ['PUT', '/api/v1/maintenance/{maintenance}', self::MANAGERS],
             'perawatan hapus' => ['DELETE', '/api/v1/maintenance/{maintenance}', self::MANAGERS],
+
+            'pengeluaran daftar' => ['GET', '/api/v1/expenses', self::ALL],
+            'pengeluaran detail' => ['GET', '/api/v1/expenses/{expense}', self::ALL],
+            'pengeluaran tambah' => ['POST', '/api/v1/expenses', self::ALL],
+            'pengeluaran ubah' => ['PUT', '/api/v1/expenses/{expense}', self::MANAGERS],
+            'pengeluaran hapus' => ['DELETE', '/api/v1/expenses/{expense}', self::MANAGERS],
+
+            'pemilik titipan daftar' => ['GET', '/api/v1/car-owners', self::MANAGERS],
+            'pemilik titipan detail' => ['GET', '/api/v1/car-owners/{carowner}', self::MANAGERS],
+            'pemilik titipan tambah' => ['POST', '/api/v1/car-owners', self::MANAGERS],
+            'pemilik titipan ubah' => ['PUT', '/api/v1/car-owners/{carowner}', self::MANAGERS],
+            'pemilik titipan pratinjau' => ['GET', '/api/v1/car-owners/{carowner}/settlement-preview?from=2026-10-01&to=2026-10-31', self::MANAGERS],
+            'setoran daftar' => ['GET', '/api/v1/settlements', self::MANAGERS],
+            'setoran detail' => ['GET', '/api/v1/settlements/{settlement}', self::MANAGERS],
+            'setoran buat' => ['POST', '/api/v1/settlements', self::MANAGERS],
+            'setoran pdf' => ['GET', '/api/v1/settlements/{settlement}/pdf', self::MANAGERS],
+            'setoran print url' => ['POST', '/api/v1/settlements/{settlement}/print-url', self::MANAGERS],
+            'setoran bayar' => ['POST', '/api/v1/settlements/{settlement}/pay', self::MANAGERS],
+            'setoran batal' => ['DELETE', '/api/v1/settlements/{settlement}', self::MANAGERS],
+            'pemilik titipan hapus' => ['DELETE', '/api/v1/car-owners/{carowner}', self::MANAGERS],
+
+            'import template' => ['GET', '/api/v1/imports/{type}/template', self::MANAGERS],
+            'import pratinjau' => ['POST', '/api/v1/imports/{type}/preview', self::MANAGERS],
+            'import simpan' => ['POST', '/api/v1/imports/{type}/commit', self::MANAGERS],
 
             'auth logout' => ['POST', '/api/v1/auth/logout', [...self::ALL, 'none']],
         ];

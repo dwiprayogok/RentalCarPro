@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, FileText, Globe, HelpCircle, History, Inbox, LayoutGrid, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, CarFront, FileSpreadsheet, FileText, Globe, Handshake, HelpCircle, History, Inbox, LayoutGrid, Receipt, Settings, UserCog, Users, type LucideIcon } from 'lucide-react'
 import { P } from '@/lib/permissions'
 
 export interface NavItem {
@@ -13,8 +13,10 @@ export const workspaceNav: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutGrid, anyOf: [P.dashboardView], end: true },
   { to: '/transaksi', label: 'Transaksi Sewa', icon: FileText, anyOf: [P.rentalView] },
   { to: '/armada', label: 'Armada Mobil', icon: CarFront, anyOf: [P.carView] },
+  { to: '/mobil-titipan', label: 'Mobil Titipan', icon: Handshake, anyOf: [P.carOwnerView, P.settlementView] },
   { to: '/pelanggan', label: 'Pelanggan', icon: Users, anyOf: [P.customerView] },
   { to: '/permintaan-booking', label: 'Permintaan Booking', icon: Inbox, anyOf: [P.bookingRequestView] },
+  { to: '/pengeluaran', label: 'Pengeluaran', icon: Receipt, anyOf: [P.expenseView] },
 ]
 
 export const insightNav: NavItem[] = [
@@ -26,6 +28,7 @@ export const systemNav: NavItem[] = [
   { to: '/pengaturan', label: 'Pengaturan', icon: Settings, anyOf: [P.settingUpdate] },
   { to: '/pengaturan-landing', label: 'Pengaturan Landing', icon: Globe, anyOf: [P.landingManage] },
   { to: '/pengguna', label: 'Pengguna & Role', icon: UserCog, anyOf: [P.userManage] },
+  { to: '/import-data', label: 'Import Data', icon: FileSpreadsheet, anyOf: [P.dataImport] },
   { to: '/log-aktivitas', label: 'Log Aktivitas', icon: History, anyOf: [P.activityView] },
 ]
 

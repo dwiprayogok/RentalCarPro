@@ -4,8 +4,8 @@ Aplikasi manajemen rental mobil untuk pasar Indonesia.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1` + Public API `/api/public`, MySQL 8 | Phase 7: + Public API, cache + webhook revalidate |
-| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 7: + Pengaturan Landing, tautan ke landing |
+| `backend/` | Laravel 13 (PHP 8.3+), REST API `/api/v1` + Public API `/api/public`, MySQL 8 | Phase 10: + Public API (7), pengeluaran & laba (8), mobil titipan (9), import Excel (10) |
+| `admin/` | Admin Web: React + TypeScript + Vite + Tailwind | Phase 10: + Pengaturan Landing, Pengeluaran, Mobil Titipan, Import Data |
 | `landing/` | Landing page publik: Next.js 15 (App Router, ISR) + Tailwind | Phase 7: beranda, armada, detail mobil, form sewa, SEO |
 | `docs/` | Dokumentasi skema & keputusan | [`docs/database.md`](docs/database.md) |
 
@@ -175,6 +175,16 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | POST/DELETE | `/api/v1/customers/{id}/documents[/{ktp\|sim}]` | `customer.update` + `customer.view_documents` | Foto KTP/SIM ke disk **privat** |
 | GET | `/api/v1/customers/{id}/documents/{type}/file` | signed URL | Berlaku 10 menit, diberikan di `documents.*.url` |
 | GET/POST/PUT/DELETE | `/api/v1/drivers` | `driver.*` | Filter `search`, `is_active` |
+| GET | `/api/v1/imports/{armada,pelanggan,driver}/template` | `data.import` + izin tambah | Template `.xlsx` (sheet Data dengan dropdown + sheet Petunjuk) |
+| POST | `/api/v1/imports/{type}/preview` | `data.import` + izin tambah | Unggah `.xlsx/.xls/.csv` (maks. 5 MB, 1.000 baris), hasil per baris: `baru` / `lewati` / `error` + token 30 menit |
+| POST | `/api/v1/imports/{type}/commit` | `data.import` + izin tambah | Simpan baris valid (validasi ulang) dalam satu transaksi |
+| GET/POST/PUT/DELETE | `/api/v1/car-owners` | `car_owner.*` | Pemilik mobil titipan + ketentuan bagi hasil (`share_basis` kotor/bersih, `share_percent`). Mobil dihubungkan lewat `cars.owner_id` |
+| GET | `/api/v1/car-owners/{owner}/settlement-preview?from=&to=` | `settlement.create` | Pratinjau bagi hasil per mobil (tidak disimpan) |
+| GET/POST | `/api/v1/settlements` | `settlement.view` / `.create` | Setoran per periode (snapshot, nomor `SET-YYYY-NNNN`); `meta.unpaid` |
+| POST | `/api/v1/settlements/{id}/pay` | `settlement.pay` | Catat pembayaran ke pemilik (multipart, bukti privat) |
+| DELETE | `/api/v1/settlements/{id}` | `settlement.delete` | Batalkan setoran yang belum dibayar |
+| GET/POST | `/api/v1/settlements/{id}/pdf`, `/print-url` | `settlement.view` | Slip PDF; link WhatsApp ke pemilik (PDF signed 7 hari) |
+| GET/POST/PUT/DELETE | `/api/v1/expenses` | `expense.*` | Pengeluaran operasional (multipart, bukti privat). Filter `car_id` (angka atau `umum`), `category`, `from`, `to`, `search`; `meta.summary` per kategori. Ubah dengan bukti: `POST` + `_method=PUT` |
 | GET/POST/PUT/DELETE | `/api/v1/maintenance` | `maintenance.*` | Filter `car_id`, `type`, `from`, `to`; `meta.total_cost`. Otomatis memperbarui odometer & jatuh tempo mobil |
 
 | GET | `/api/v1/rentals` | `rental.view` | `view=semua\|booking\|aktif\|terlambat\|selesai\|batal\|belum_lunas`, `search`; `meta.counts` |
@@ -194,7 +204,7 @@ yang lalu memanggil `POST /api/v1/auth/reset-password`. Tautan berlaku 60 menit.
 | GET | `/api/v1/rentals/{id}/invoice/pdf` | `rental.view` | PDF nota (dompdf, A4) |
 | POST | `/api/v1/rentals/{id}/invoice/print-url` | `rental.view` | Signed URL PDF 2 menit untuk tombol Cetak |
 | GET | `/api/v1/dashboard` | `dashboard.view` | Banner dinamis, KPI, arus kas 7 hari, pengembalian prioritas, armada pilihan, transaksi terbaru, pengingat pajak/STNK/servis |
-| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
+| GET | `/api/v1/reports/{payments,receivables,revenue-by-car,profit,utilization,maintenance}` | `report.view` | Filter `from`, `to` (WIB), `method`, `car_id`; agregasi di database |
 | GET | `/api/v1/reports/{type}/export` | `report.view` | CSV (`;`, UTF-8 BOM) |
 | GET/PATCH | `/api/v1/booking-requests[/{id}]` | `booking_request.*` | Status `baru/dihubungi/ditolak`; "Jadikan Sewa" = `POST /rentals` dengan `booking_request_id` |
 
@@ -243,6 +253,31 @@ Aturan Public API (Phase 7):
 - **Cache:** respons disimpan sebagai array biasa dengan kunci berversi (`public:version`). Setiap perubahan mobil, foto, hari libur, pengaturan publik, atau jadwal sewa menaikkan versi (cache lama otomatis tidak terpakai) lalu menjalankan job `RevalidateLanding`.
 - **Webhook revalidate:** `POST {LANDING_REVALIDATE_URL}` dengan header `X-Revalidate-Secret` dan body `{"tags":["public"]}`. Di queue sungguhan job dicoba ulang 3× (5 dtk, 30 dtk, 2 mnt). Di driver `sync`, kegagalan hanya dicatat di log agar simpan data di Admin tidak ikut gagal. Landing tetap menyegarkan diri tiap `REVALIDATE_SECONDS`.
 
+Pengeluaran & laba (Phase 8):
+- **Pengeluaran** punya kategori (BBM, cuci, parkir/tol, asuransi, cicilan, gaji, sewa tempat, listrik/air/internet, pemasaran, lainnya). Bisa untuk satu mobil, atau umum (`car_id` kosong). Biaya servis tetap dicatat di Perawatan.
+- **Bukti/struk** disimpan di disk privat dan hanya bisa dibuka lewat signed URL 10 menit. Mengganti bukti menghapus berkas lama. Hapus pengeluaran = soft delete, dan bukti tetap disimpan untuk audit.
+- **Laba per mobil** = pendapatan diterima − biaya perawatan − pengeluaran mobil itu, dihitung per tanggal (WIB). **Laba bersih usaha** juga dikurangi pengeluaran umum. Saat difilter per mobil, pengeluaran umum tidak ikut.
+- **Hak akses:** staf boleh melihat dan mencatat pengeluaran. Mengubah/menghapus hanya pemilik/admin. Laporan laba butuh `report.view`. Semua perubahan tercatat di Log Aktivitas (modul Pengeluaran).
+
+Mobil titipan & bagi hasil (Phase 9):
+- **Pemilik** punya ketentuan sendiri: **% dari pendapatan kotor** (biaya servis & pengeluaran ditanggung rental) atau **% dari laba bersih** (pendapatan − perawatan − pengeluaran mobil itu). Definisi angkanya sama dengan laporan Laba.
+- **Setoran** dibuat per periode, dan angkanya di-*snapshot* (`lines` per mobil). Data yang berubah belakangan tidak mengubah setoran. Periode satu pemilik tidak boleh tumpang tindih (baris pemilik dikunci saat membuat setoran).
+- **Pembulatan:** bagian pemilik = round(dasar × persen). Bila dasar negatif (rugi), bagian pemilik Rp 0 dan kerugian tidak dibawa ke periode berikutnya.
+- **Setoran yang sudah dibayar** tidak bisa dibayar ulang atau dibatalkan, termasuk oleh owner. Aturan ini ditegakkan di service, karena owner lolos semua policy lewat `Gate::before`.
+- **Hak akses:** pemilik & admin. Staf tidak punya akses. Pembuatan, pembayaran, dan pembatalan tercatat di Log Aktivitas.
+
+Import Excel (Phase 10):
+- **Validasi sama dengan form biasa:** setiap baris dijalankan lewat FormRequest yang sama (`SaveCarRequest`, `SaveCustomerRequest`, `SaveDriverRequest`), termasuk normalisasi dan pesan Bahasa Indonesia. Penyimpanan lewat service yang sama, jadi NIK tetap terenkripsi dan slug serta log aktivitas tetap jalan.
+- **Konversi sel:**
+  - tanggal Excel atau `dd/mm/yyyy`;
+  - nominal notasi Indonesia (`Rp 1.250.000`, `500.000` = lima ratus ribu);
+  - pilihan berdasarkan label (`Matic`, `Ya/Tidak`);
+  - HP tanpa angka 0 di depan.
+  NIK yang terbaca sebagai angka ditolak, karena Excel hanya menyimpan 15 digit.
+- **Data yang sudah ada dilewati, tidak ditimpa:** plat (armada), NIK/HP (pelanggan), HP (driver). Baris ganda dalam satu file ditandai.
+- **Pratinjau** disimpan di cache 30 menit dengan token yang terikat ke pengguna dan jenis data. Saat commit, setiap baris divalidasi ulang. NIK lengkap tidak pernah dikirim di pratinjau.
+- **Hak akses:** permission `data.import` (pemilik & admin) plus izin tambah jenis datanya. Setiap import tercatat di Log Aktivitas (modul Import data).
+
 Format error konsisten dalam Bahasa Indonesia: `{ "message": "...", "errors": { "field": ["..."] } }`
 dengan status 401, 403, 404, 419, 422, atau 429.
 
@@ -285,7 +320,10 @@ php artisan route:list --path=api        # daftar endpoint
 | ![Laporan](docs/screenshots/laporan.png) | ![Permintaan Booking](docs/screenshots/permintaan-booking.png) |
 | ![Pengaturan](docs/screenshots/pengaturan.png) | ![Pengguna & Role](docs/screenshots/pengguna.png) |
 | ![Log Aktivitas](docs/screenshots/log-aktivitas.png) | ![Pengaturan Landing](docs/screenshots/pengaturan-landing.png) |
-| ![Booking dari landing](docs/screenshots/booking-dari-landing.png) | |
+| ![Booking dari landing](docs/screenshots/booking-dari-landing.png) | ![Pengeluaran](docs/screenshots/pengeluaran.png) |
+| ![Laba per mobil](docs/screenshots/laporan-laba.png) | ![Mobil Titipan](docs/screenshots/mobil-titipan.png) |
+| ![Pratinjau setoran](docs/screenshots/setoran-pratinjau.png) | ![Detail setoran](docs/screenshots/setoran-detail.png) |
+| ![Pratinjau import](docs/screenshots/import-pratinjau.png) | ![Hasil import](docs/screenshots/import-hasil.png) |
 
 ## Tampilan Landing
 

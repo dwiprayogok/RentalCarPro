@@ -10,6 +10,7 @@ use App\Models\BookingRequest;
 use App\Models\Car;
 use App\Models\Customer;
 use App\Models\DocumentSequence;
+use App\Models\Expense;
 use App\Models\MaintenanceRecord;
 use App\Models\Rental;
 use App\Models\User;
@@ -164,6 +165,34 @@ class ReportDemoSeeder extends Seeder
         }
 
         $this->renumberChronologically();
+
+        // Pengeluaran contoh (deterministik, tanpa mt_rand agar urutan acak di atas tidak berubah).
+        foreach ($cars->values() as $ci => $car) {
+            for ($d = 3 + $ci; $d <= 58; $d += 9) {
+                Expense::create([
+                    'car_id' => $car->id, 'category' => 'bbm', 'title' => 'Isi BBM antar-jemput (contoh)', 'spent_at' => now()->subDays($d)->toDateString(),
+                    'amount' => 150000 + (($d * 37 + $ci * 11) % 6) * 25000, 'method' => 'tunai', 'vendor' => 'SPBU Pajajaran', 'created_by' => $user->id,
+                ]);
+            }
+            for ($d = 5 + $ci * 2; $d <= 58; $d += 14) {
+                Expense::create([
+                    'car_id' => $car->id, 'category' => 'cuci', 'title' => 'Cuci & vakum interior (contoh)', 'spent_at' => now()->subDays($d)->toDateString(),
+                    'amount' => 75000, 'method' => 'tunai', 'vendor' => 'Cuci Mobil Kilat', 'created_by' => $user->id,
+                ]);
+            }
+            Expense::create([
+                'car_id' => $car->id, 'category' => 'asuransi', 'title' => 'Premi asuransi bulanan (contoh)', 'spent_at' => now()->subDays(15 + $ci)->toDateString(),
+                'amount' => 350000 + $ci * 50000, 'method' => 'transfer', 'vendor' => 'Asuransi Contoh', 'created_by' => $user->id,
+            ]);
+        }
+        foreach ([[1, 'gaji', 'Gaji staf admin (contoh)', 3500000], [2, 'sewa_tempat', 'Sewa garasi (contoh)', 1500000], [4, 'utilitas', 'Listrik & internet kantor (contoh)', 650000], [10, 'pemasaran', 'Iklan media sosial (contoh)', 400000]] as [$day, $cat, $title, $amount]) {
+            foreach ([0, 30] as $shift) {
+                Expense::create([
+                    'car_id' => null, 'category' => $cat, 'title' => $title, 'spent_at' => now()->subDays($day + $shift)->toDateString(),
+                    'amount' => $amount, 'method' => 'transfer', 'created_by' => $user->id,
+                ]);
+            }
+        }
 
         // Pengingat jatuh tempo untuk dashboard.
         $first = $cars->first();

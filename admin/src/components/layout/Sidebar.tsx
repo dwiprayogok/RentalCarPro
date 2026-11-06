@@ -53,14 +53,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col bg-sidebar px-4 py-6 text-white">
       <div className="px-2"><Logo /></div>
 
-      <nav className="mt-8 flex-1 space-y-6 overflow-y-auto" aria-label="Menu utama">
+      <nav className="mt-8 min-h-0 flex-1 space-y-6 overflow-y-auto" aria-label="Menu utama">
         <NavSection title="Workspace" items={workspaceNav} onNavigate={onNavigate} />
         <div className="mx-3 border-t border-white/10" />
         <NavSection title="Insight & Bantuan" items={insightNav} onNavigate={onNavigate} />
         <NavSection title="Sistem" items={systemNav} onNavigate={onNavigate} />
       </nav>
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+      {/* Kartu promo hanya di layar tinggi agar menu tidak tertutup. */}
+      <div className="mt-4 hidden rounded-2xl border border-white/10 bg-white/5 p-4 [@media(min-height:1000px)]:block">
         <ShieldCheck className="size-5 text-brand-300" />
         <p className="mt-2 text-sm font-bold">Bisnis rapi, perjalanan lancar</p>
         <p className="mt-1 text-2xs leading-relaxed text-sidebar-muted">Data sewa, armada, dan pelanggan tersimpan aman di satu tempat.</p>

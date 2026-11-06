@@ -33,6 +33,7 @@ class CarController extends Controller
             'status' => ['nullable', Rule::enum(CarStatus::class)],
             'transmission' => ['nullable', 'in:matic,manual'],
             'is_published' => ['nullable', 'boolean'],
+            'owner' => ['nullable', 'regex:/^(\d+|sendiri|titipan)$/'],
             'sort' => ['nullable', 'in:newest,name,rate_asc,rate_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -48,13 +49,18 @@ class CarController extends Controller
                     ->orWhereRaw("REPLACE(plate_number, ' ', '') like ?", [$plate]));
             })
             ->when($filters['transmission'] ?? null, fn (Builder $q, $t) => $q->where('transmission', $t))
+            ->when($filters['owner'] ?? null, fn (Builder $q, $o) => match ($o) {
+                'sendiri' => $q->whereNull('owner_id'),
+                'titipan' => $q->whereNotNull('owner_id'),
+                default => $q->where('owner_id', (int) $o),
+            })
             ->when(array_key_exists('is_published', $filters), fn (Builder $q) => $q->where('is_published', (bool) $filters['is_published']));
 
         $counts = (clone $base)->toBase()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
         $cars = (clone $base)
             ->when($filters['status'] ?? null, fn (Builder $q, $s) => $q->where('status', $s))
-            ->with('photos')
+            ->with(['photos', 'owner'])
             ->tap(fn (Builder $q) => match ($filters['sort'] ?? 'newest') {
                 'name' => $q->orderBy('brand')->orderBy('model'),
                 'rate_asc' => $q->orderBy('rate_self_drive'),
@@ -74,7 +80,7 @@ class CarController extends Controller
     {
         $car = $this->cars->create($request->validated(), $request->user());
 
-        return (new CarResource($car->load('photos')))
+        return (new CarResource($car->load(['photos', 'owner'])))
             ->additional(['message' => 'Armada berhasil ditambahkan.'])
             ->response()->setStatusCode(201);
     }
@@ -83,14 +89,14 @@ class CarController extends Controller
     {
         Gate::authorize('view', $car);
 
-        return new CarResource($car->load('photos')->loadCount('rentals'));
+        return new CarResource($car->load(['photos', 'owner'])->loadCount('rentals'));
     }
 
     public function update(SaveCarRequest $request, Car $car): CarResource
     {
         $this->cars->update($car, $request->validated());
 
-        return (new CarResource($car->fresh()->load('photos')))
+        return (new CarResource($car->fresh()->load(['photos', 'owner'])))
             ->additional(['message' => 'Data armada berhasil diperbarui.']);
     }
 

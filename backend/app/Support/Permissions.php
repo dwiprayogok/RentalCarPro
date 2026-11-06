@@ -87,6 +87,31 @@ final class Permissions
 
     public const MAINTENANCE_DELETE = 'maintenance.delete';
 
+    // Pengeluaran operasional (BBM, cuci, gaji, dll.)
+    public const EXPENSE_VIEW = 'expense.view';
+
+    public const EXPENSE_CREATE = 'expense.create';
+
+    public const EXPENSE_UPDATE = 'expense.update';
+
+    public const EXPENSE_DELETE = 'expense.delete';
+
+    // Mobil titipan & bagi hasil
+    public const CAR_OWNER_VIEW = 'car_owner.view';
+
+    public const CAR_OWNER_MANAGE = 'car_owner.manage';
+
+    public const SETTLEMENT_VIEW = 'settlement.view';
+
+    public const SETTLEMENT_CREATE = 'settlement.create';
+
+    public const SETTLEMENT_PAY = 'settlement.pay';
+
+    public const SETTLEMENT_DELETE = 'settlement.delete';
+
+    // Import data massal dari Excel/CSV (ditambah izin tambah per jenis data)
+    public const DATA_IMPORT = 'data.import';
+
     // Permintaan booking dari landing
     public const BOOKING_REQUEST_VIEW = 'booking_request.view';
 
@@ -150,6 +175,8 @@ final class Permissions
             self::CUSTOMER_VIEW_DOCUMENTS,
             self::DRIVER_VIEW,
             self::MAINTENANCE_VIEW,
+            self::EXPENSE_VIEW,
+            self::EXPENSE_CREATE,
             self::BOOKING_REQUEST_VIEW,
             self::BOOKING_REQUEST_UPDATE,
             self::REPORT_OPERATIONAL,

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,7 +22,7 @@ class Car extends Model
     use HasFactory, LogsActivity, SerializesDatesInDisplayTimezone, SoftDeletes;
 
     protected $fillable = [
-        'brand', 'model', 'plate_number', 'transmission', 'year', 'color', 'seats', 'fuel_type',
+        'owner_id', 'brand', 'model', 'plate_number', 'transmission', 'year', 'color', 'seats', 'fuel_type',
         'rate_self_drive', 'rate_with_driver', 'weekend_rate_self_drive', 'weekend_rate_with_driver',
         'default_deposit', 'odometer', 'status',
         'tax_due_date', 'stnk_due_date', 'next_service_date', 'next_service_odometer', 'service_interval_km',
@@ -77,6 +78,12 @@ class Car extends Model
         return Attribute::get(fn () => trim("{$this->brand} {$this->model}"));
     }
 
+    /** Pemilik titipan; null = milik rental sendiri. */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(CarOwner::class, 'owner_id')->withTrashed();
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(CarPhoto::class)->orderBy('sort_order');
@@ -107,7 +114,7 @@ class Car extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'rate_self_drive', 'rate_with_driver', 'weekend_rate_self_drive', 'weekend_rate_with_driver',
-                'status', 'odometer', 'is_published', 'plate_number',
+                'status', 'odometer', 'is_published', 'plate_number', 'owner_id',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

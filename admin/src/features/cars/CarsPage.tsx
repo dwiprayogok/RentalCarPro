@@ -1,6 +1,6 @@
-import { CarFront, Plus } from 'lucide-react'
+import { CarFront, FileSpreadsheet, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useCan } from '@/auth/useAuth'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -47,7 +47,12 @@ export function CarsPage() {
       <PageHeader
         title="Armada"
         subtitle="Semua kendaraan, tarif, dan status ketersediaannya."
-        action={can(P.carCreate) && <Button onClick={() => setForm({ open: true, car: null })}><Plus className="size-4" /> Tambah Armada</Button>}
+        action={can(P.carCreate) && (
+          <div className="flex flex-wrap gap-2">
+            {can(P.dataImport) && <Link to="/import-data?jenis=armada" className="inline-flex h-10 items-center gap-2 rounded-xl border border-line-strong bg-white px-4 text-sm font-semibold text-ink hover:bg-canvas"><FileSpreadsheet className="size-4" /> Import Excel</Link>}
+            <Button onClick={() => setForm({ open: true, car: null })}><Plus className="size-4" /> Tambah Armada</Button>
+          </div>
+        )}
       />
 
       <div className="mb-5 flex flex-col gap-3">

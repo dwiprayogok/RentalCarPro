@@ -1,12 +1,13 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-export type ReportTab = 'pembayaran' | 'piutang' | 'pendapatan' | 'utilisasi' | 'servis'
+export type ReportTab = 'pembayaran' | 'piutang' | 'pendapatan' | 'laba' | 'utilisasi' | 'servis'
 
 export const REPORT_ENDPOINT: Record<ReportTab, string> = {
   pembayaran: 'payments',
   piutang: 'receivables',
   pendapatan: 'revenue-by-car',
+  laba: 'profit',
   utilisasi: 'utilization',
   servis: 'maintenance',
 }
