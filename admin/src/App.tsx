@@ -12,6 +12,7 @@ import { OwnersPage } from '@/features/owners/OwnersPage'
 import { ImportPage } from '@/features/imports/ImportPage'
 import { GuidePage } from '@/pages/GuidePage'
 import { ActivityLogPage } from '@/features/admin/ActivityLogPage'
+import { LandingSettingsPage } from '@/features/admin/LandingSettingsPage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { P } from '@/lib/permissions'
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           { path: 'laporan', element: <RequirePermission anyOf={[P.reportView]}><ReportsPage /></RequirePermission> },
           { path: 'panduan', element: <GuidePage /> },
           { path: 'pengaturan', element: <RequirePermission anyOf={[P.settingUpdate]}><SettingsPage /></RequirePermission> },
+          { path: 'pengaturan-landing', element: <RequirePermission anyOf={[P.landingManage]}><LandingSettingsPage /></RequirePermission> },
           { path: 'pengguna', element: <RequirePermission anyOf={[P.userManage]}><UsersPage /></RequirePermission> },
           { path: 'import-data', element: <RequirePermission anyOf={[P.dataImport]}><ImportPage /></RequirePermission> },
           { path: 'log-aktivitas', element: <RequirePermission anyOf={[P.activityView]}><ActivityLogPage /></RequirePermission> },

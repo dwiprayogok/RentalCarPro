@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Public\PublicController;
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
@@ -163,4 +164,16 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('rentals/{rental}/inspections/{type}/photos/{index}', [RentalInspectionController::class, 'photo'])
             ->whereIn('type', ['serah_terima', 'kembali'])->whereNumber('index')->name('rentals.inspections.photo');
     });
+});
+
+/*
+| Public API untuk landing page: tanpa login, rate limited, di-cache, daftar putih field.
+*/
+Route::prefix('public')->name('public.')->middleware('throttle:public')->group(function () {
+    Route::get('cars', [PublicController::class, 'cars'])->name('cars');
+    Route::get('cars/{slug}', [PublicController::class, 'car'])->where('slug', '[a-z0-9-]+')->name('car');
+    Route::get('availability', [PublicController::class, 'availability'])->name('availability');
+    Route::get('site-settings', [PublicController::class, 'siteSettings'])->name('site-settings');
+    Route::post('booking-requests', [PublicController::class, 'storeBooking'])
+        ->middleware('throttle:public-booking')->name('booking-requests');
 });

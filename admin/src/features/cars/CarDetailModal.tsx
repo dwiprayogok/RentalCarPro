@@ -170,7 +170,11 @@ export function CarDetailModal({ carId, onClose, onEdit }: { carId: number | nul
                 ) : <span className="text-ink-muted">Belum diisi</span>}
               </Info>
               <Info label="Landing page">
-                {car.is_published ? <Badge tone="teal">Tampil · /{car.slug}</Badge> : <Badge tone="gray">Tidak tampil</Badge>}
+                {car.is_published ? (
+                  <a href={`${(import.meta.env.VITE_LANDING_URL ?? 'http://localhost:3000').replace(/\/$/, '')}/armada/${car.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                    Lihat di landing <span className="text-2xs font-normal text-ink-muted">/armada/{car.slug}</span>
+                  </a>
+                ) : <Badge tone="gray">Tidak tampil</Badge>}
               </Info>
               {car.features.length > 0 && (
                 <div className="col-span-2">

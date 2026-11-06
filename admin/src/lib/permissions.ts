@@ -36,6 +36,7 @@ export const P = {
   settingView: 'setting.view',
   settingUpdate: 'setting.update',
   userManage: 'user.manage',
+  landingManage: 'landing.manage',
   activityView: 'activity.view',
   bookingRequestView: 'booking_request.view',
   bookingRequestUpdate: 'booking_request.update',
